@@ -71,11 +71,12 @@ type Player struct {
 	Leaving        bool      `json:"leaving,omitempty"`
 }
 type Message struct {
-	ID     string    `json:"id"`
-	UserID string    `json:"userId"`
-	Name   string    `json:"name"`
-	Text   string    `json:"text"`
-	At     time.Time `json:"at"`
+	ID       string    `json:"id"`
+	UserID   string    `json:"userId"`
+	Name     string    `json:"name"`
+	Text     string    `json:"text"`
+	At       time.Time `json:"at"`
+	Recalled bool      `json:"recalled,omitempty"`
 }
 type roomData struct {
 	ID              string         `json:"id"`

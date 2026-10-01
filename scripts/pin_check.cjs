@@ -7,6 +7,14 @@ const { chromium } = require("playwright");
 const base = process.env.RIVER_TEST_URL || "http://localhost:8091";
 const out = process.env.RIVER_ARTIFACT_DIR;
 
+async function messageAction(page, text, action) {
+  const bubble = page.locator(".chat-message").filter({ hasText: text }).locator(".cs-message__content");
+  await bubble.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(200);
+  await bubble.click({ button: "right", position: { x: 20, y: 20 } });
+  await page.getByRole("menuitem", { name: action, exact: true }).click();
+}
+
 async function checkLayout(page) {
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Page overflow");
   const layout = await page.locator(".chat-panel").evaluate((panel) => {
@@ -54,8 +62,11 @@ async function checkLayout(page) {
     await guest.getByLabel("聊天消息").fill(text);
     await guest.getByRole("button", { name: "发送消息", exact: true }).click();
     await host.locator(".chat-message").filter({ hasText: text }).waitFor();
-    assert.equal(await guest.getByRole("button", { name: "置顶此消息", exact: true }).count(), 0);
-    await host.getByRole("button", { name: "置顶此消息", exact: true }).click();
+    await guest.locator(".chat-message").filter({ hasText: text }).locator(".cs-message__content").click({ button: "right", position: { x: 20, y: 20 } });
+    await guest.getByRole("menu").waitFor();
+    assert.equal(await guest.getByRole("menuitem", { name: "置顶消息", exact: true }).count(), 0);
+    await guest.keyboard.press("Escape");
+    await messageAction(host, text, "置顶消息");
     for (const page of [host, guest]) {
       await page.getByRole("region", { name: "置顶消息", exact: true }).waitFor();
       assert.equal(await page.locator(".pinned-message p").innerText(), text);
@@ -79,17 +90,17 @@ async function checkLayout(page) {
     await host.getByRole("button", { name: "牌桌聊天" }).click();
     await host.getByRole("region", { name: "置顶消息", exact: true }).waitFor();
     assert.equal(await host.locator(".pinned-message p").innerText(), text);
-    await host.locator(".chat-message").filter({ hasText: "后续聊天 0" }).getByRole("button", { name: "置顶此消息", exact: true }).click();
+    await messageAction(host, "后续聊天 0", "置顶消息");
     for (const page of [host, guest]) await page.locator(".pinned-message p").filter({ hasText: "后续聊天 0" }).waitFor();
     await host.getByRole("button", { name: "取消置顶消息", exact: true }).click();
     for (const page of [host, guest]) await page.getByRole("region", { name: "置顶消息", exact: true }).waitFor({ state: "detached" });
     // Exercise the same controls as a host on a narrow and short phone viewport.
     await host.setViewportSize({ width: 390, height: 667 });
-    await host.locator(".chat-message").filter({ hasText: text }).getByRole("button", { name: "置顶此消息", exact: true }).click();
+    await messageAction(host, text, "置顶消息");
     await host.getByRole("region", { name: "置顶消息", exact: true }).waitFor();
     assert((await checkLayout(host)).textScrolls, "Long pin should scroll inside its bounded area");
     if (out) await host.screenshot({ path: path.join(out, "pinned-host-mobile.png") });
-    await host.locator(".chat-message").filter({ hasText: text }).getByRole("button", { name: "取消置顶此消息", exact: true }).click();
+    await messageAction(host, text, "取消置顶");
     for (const page of [host, guest]) await page.getByRole("region", { name: "置顶消息", exact: true }).waitFor({ state: "detached" });
     assert.deepEqual(errors, [], "Browser errors");
     console.log("PASS: host pin/replace/unpin, guest read-only, two-client broadcast, reload, escaped text, scroll and desktop/mobile layouts");

@@ -37,3 +37,5 @@
 - [部署说明](DEPLOYMENT.md)
 - [验证记录](VERIFICATION.md)
 - [组件与素材来源](CREDITS.md)
+
+聊天复用适配层位于 [`ChatBubble.tsx`](../frontend/src/components/ChatBubble.tsx)（Chatscope 消息）和 [`ChatMessages.tsx`](../frontend/src/components/ChatMessages.tsx)（Radix 菜单与业务权限），归入 shared/table 规格。
