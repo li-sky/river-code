@@ -16,8 +16,9 @@ RoomSummary {id,name,hostId,players,settings,status}
 RoomState {id,name,hostId,settings,players:Player[],hand:HandView|null,messages:Message[],pinnedMessage:Message|null,version,voiceParticipantIds:string[]}; authoritative voice roster is capped at 9, connected seated players first, then permitted connected spectators. Both system and room spectator flags are required.
 Player {id,name,avatarUrl,avatarEmoji,seat:number,stack:number,connected:boolean,sittingOut:boolean}
 HandView {number,phase:'preflop'|'flop'|'turn'|'river'|'showdown'|'complete',board:string[],pot:number,dealerSeat:number,turnSeat:number,currentBet:number,minRaise:number,deadline:string,turnToken:string,players:HandPlayer[],winners?:{id,amount,description}[]}
-HandPlayer {id,seat,bet,totalBet,folded,allIn,cards:string[],acted:boolean,canRaise:boolean}
+HandPlayer {id,seat,bet,totalBet,folded,allIn,cards:string[],acted:boolean,canRaise:boolean,currentHand?:string}
 Cards rank+suit eg As, Th, 2c; opponent hidden cards = [].
+`currentHand` is the Chinese category of the best five-card hand using this viewer's visible two hole cards and the already dealt board (3–5 cards). It is omitted before the flop, for hidden/folded hands, or invalid inputs. It updates with every personalized snapshot and is shown for opponents only when their cards are revealed at showdown. This hint does not determine payouts and never uses the deck or future board cards. Older clients can ignore the optional field; newer clients hide the hint when absent.
 Message {id,userId,name,text,at}
 
 ## WS

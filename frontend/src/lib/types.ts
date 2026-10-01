@@ -63,6 +63,7 @@ export interface HandPlayer {
   cards: string[];
   acted: boolean;
   canRaise: boolean;
+  currentHand?: string;
 }
 export interface HandView {
   number: number;

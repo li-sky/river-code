@@ -65,3 +65,11 @@ GitHub OAuth 使用可控的模拟提供方验证了状态、令牌交换及用�
 - Windows 原生 Go：`go test ./...` 与 `go vet ./...` 通过；五项 `TestPin*` 测试实际覆盖当前房主、旧连接、跨桌/无效 ID、过期取消、系统/房间开关、限流、牌局中操作、房主移交、聊天裁剪、作者离开、快照恢复、旧字段缺失和保存失败回滚/无广播。
 - `npm run build` 通过。`scripts/pin_check.cjs` 在隔离的 `http://localhost:8091` 服务、内存存储及两份 Chrome 会话通过：房主置顶/替换/两处取消、guest 只读、双端同步、刷新、文本转义、聊天滚动，1440×1000 桌面、390×844 手机及 390×667 手机房主布局无横向溢出且输入框可用。执行代理实际查看桌面与手机截图，确认置顶区域可读且有界滚动。
 - 本次恢复证据来自内存仓储重新构造服务；未验证真实 PostgreSQL 进程重启。可选 `go test -race ./internal/server` 在当前 Windows 环境因缺少 CGO 无法运行，不登记为通过。未发布或替换既有运行服务。
+
+## 当前可见牌型提示（2026-10-01）
+
+独立 `feat/current-hand-rank` worktree 增加服务端 `HandPlayer.currentHand`，从可见两张底牌与当前公共牌计算最佳五张类别。测试涵盖逐轮更新、私牌隔离、摊牌、弃牌、新手清除、公共牌最佳组合及 A2345；执行入口为 `backend/internal/poker/current_hand_test.go`。
+
+本次本地执行后端 `go test ./...`、`go vet ./...` 及前端 `npm run build`。实际浏览器使用独立内存服务 `127.0.0.1:8093` 与两名合成访客，通过真实 HTTP/WebSocket 验证翻牌前不显示、翻牌/转牌/河牌同步显示、摊牌公开对手、新手和弃牌后标签数量归零。桌面 1440×1000、手机 390×844 和 320×740 已检查；手机底牌区与座位一致，提示为 14px。320px 短屏仍使用原有 sticky 操作区和纵向滚动，滚动至牌桌下方后座位标签完整可见，底牌区同步提示始终随操作区显示。新增标签下方预留 28px 间距，无横向溢出；本次未改造原有 sticky 布局。
+
+代码和规格使用各自独立 worktree，未修改主工作区的并行 UI；未合并或部署，未验证生产数据库、OAuth 或 TURN。最终提交后的检查证据由 [当前牌型计划](https://github.com/li-sky/river-spec/blob/2c7a2ef02aefb0be7258624133b1a75c1245678a/plans/current-hand-rank.md) 后续完成记录保存。Windows 验证使用独立工具目录中的 Go 1.24.0 和调用现有 Node/npm 的本地 npm shim，以适配 SDD 的固定命令。
