@@ -18,6 +18,10 @@
 
 ## 复现
 
+2026-10-01 公开／私人房间变更：Windows 本地执行 `go test ./...`、`go vet ./...` 和 `npm run build` 通过；新增服务测试覆盖必填可见性、列表过滤、认证链接加入、房主权限、手牌进行中限制、广播、保存失败回滚和内存快照恢复。隔离的实际 Go 服务使用内存仓储，Chrome 桌面 1440×1000 与手机 390×844 执行 `scripts/visibility_check.cjs` 通过，观察到私人创建、邀请链接登录、跨身份加入、公开／私人切换、5 秒大厅刷新及刷新后设置保持，无横向溢出或浏览器异常。本次没有重新验证真实 PostgreSQL、OAuth 或公网 TURN。
+
+房间浏览器验收需要 Node.js 和 `playwright` 包，默认使用 Chrome；可用 `RIVER_BROWSER_PATH` 指定浏览器可执行文件、`RIVER_TEST_URL` 指定隔离服务、`RIVER_ARTIFACT_DIR` 保存截图，执行 `node scripts/visibility_check.cjs`。可见性必填，不兼容缺少该字段的旧请求和旧快照；旧快照会拒绝启动恢复，不自动迁移。
+
 先连接一个隔离的测试数据库并运行服务；这些脚本会创建测试账号和房间，不应指向使用中的牌桌。Python 脚本需要 Python 3.11+、`websockets` 和 `playwright`；运行浏览器测试前执行 `playwright install chromium`。默认地址为 `http://localhost:8080`，可用 `RIVER_TEST_URL` 覆盖；配置了加入密码时以 `JOIN_PASSWORD` 提供。
 
 ```bash

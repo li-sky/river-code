@@ -35,7 +35,7 @@ func testServer(t *testing.T) *Server {
 	return s
 }
 func fixtureRoom(s *Server) *room {
-	r := &room{roomData: roomData{ID: "testroom", Name: "Test", HostID: "host", Settings: RoomSettings{SmallBlind: 5, BigBlind: 10, BuyIn: 1000, MaxPlayers: 9, ActionSeconds: 30, VoiceEnabled: true, ChatEnabled: true, ReactionsEnabled: true}, Players: []*Player{{ID: "host", Name: "Host", Seat: 0, Stack: 1000, Connected: true}, {ID: "guest", Name: "Guest", Seat: 1, Stack: 1000, Connected: true}}, Messages: []Message{}, LastDealer: -1}, clients: map[string]*client{}, system: &s.cfg}
+	r := &room{roomData: roomData{ID: "testroom", Name: "Test", HostID: "host", Settings: RoomSettings{Visibility: "public", SmallBlind: 5, BigBlind: 10, BuyIn: 1000, MaxPlayers: 9, ActionSeconds: 30, VoiceEnabled: true, ChatEnabled: true, ReactionsEnabled: true}, Players: []*Player{{ID: "host", Name: "Host", Seat: 0, Stack: 1000, Connected: true}, {ID: "guest", Name: "Guest", Seat: 1, Stack: 1000, Connected: true}}, Messages: []Message{}, LastDealer: -1}, clients: map[string]*client{}, system: &s.cfg}
 	for _, p := range r.Players {
 		r.clients[p.ID] = &client{id: p.ID, room: r, send: make(chan []byte, 64), rates: map[string]rate{}}
 	}
@@ -298,7 +298,7 @@ func TestStaleTurnTokenRejectsRepeatedCheckOnNextStreet(t *testing.T) {
 	if !bytes.Equal(before, after) {
 		t.Fatal("stale action changed state")
 	}
-	if err := (RoomSettings{SmallBlind: 9223372036854775807, BigBlind: 10, BuyIn: 1000, MaxPlayers: 9, ActionSeconds: 30}).validate(); err == nil {
+	if err := (RoomSettings{Visibility: "public", SmallBlind: 9223372036854775807, BigBlind: 10, BuyIn: 1000, MaxPlayers: 9, ActionSeconds: 30}).validate(); err == nil {
 		t.Fatal("overflowing small blind accepted")
 	}
 }

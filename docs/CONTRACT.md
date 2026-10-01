@@ -7,10 +7,11 @@ Self-hosted Go + PostgreSQL + React/TypeScript. Chinese UI; system configuration
 - POST /api/auth/guest {name,password}; POST /api/auth/register {name,email,password,joinPassword}; POST /api/auth/login {email,password,joinPassword}; GET /api/auth/github; POST /api/auth/logout
 - GET /api/me => User or 401. User {id,name,avatarUrl,guest,settings:{soundEnabled,volume,voiceMuted,avatarEmoji}}
 - PATCH /api/me {name?,avatarUrl?,gravatarEmail?,settings?}; POST /api/me/avatar multipart file
-- GET /api/rooms => RoomSummary[]; POST /api/rooms {name,settings:RoomSettings} => {id}
+- GET /api/rooms => public RoomSummary[] only (private rooms are omitted even for their host); POST /api/rooms {name,settings:RoomSettings} => {id}
 - GET /api/rooms/:id => personalized RoomState; GET /api/rooms/:id/ws websocket
 
-RoomSettings {smallBlind,bigBlind,buyIn,maxPlayers,actionSeconds,voiceEnabled,voiceMode:'free'|'push-to-talk',spectatorVoiceEnabled,chatEnabled,reactionsEnabled}; omitted voiceMode uses system default.
+RoomSettings {visibility:'public'|'private',smallBlind,bigBlind,buyIn,maxPlayers,actionSeconds,voiceEnabled,voiceMode:'free'|'push-to-talk',spectatorVoiceEnabled,chatEnabled,reactionsEnabled}; omitted voiceMode uses system default. Visibility is required on creation, settings commands, and saved snapshots; missing, empty, or invalid values are rejected. No legacy snapshot migration or visibility fallback is provided. The new-room UI initially selects public.
+Private rooms use the existing /?room=<128-bit random room ID> invitation link: any authenticated identity with the link can read personalized state and join over WS. Private means hidden from discovery, with no separate room password or per-user invitation list. Public/private changes are host-only between hands, persist in the room snapshot, and broadcast after successful save. Links and existing members remain valid after switching.
 RoomSummary {id,name,hostId,players,settings,status}
 RoomState {id,name,hostId,settings,players:Player[],hand:HandView|null,messages:Message[],version,voiceParticipantIds:string[]}; authoritative voice roster is capped at 9, connected seated players first, then permitted connected spectators. Both system and room spectator flags are required.
 Player {id,name,avatarUrl,avatarEmoji,seat:number,stack:number,connected:boolean,sittingOut:boolean}

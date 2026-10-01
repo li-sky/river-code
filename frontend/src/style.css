@@ -2994,7 +2994,12 @@ input[type="range"] {
   }
 }
 
-.room-voice-mode {
+.room-visibility-field {
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.room-select {
   background: #0d1820;
   color: #c9d6d0;
   border: 1px solid #304048;
@@ -3002,6 +3007,7 @@ input[type="range"] {
   padding: 8px 10px;
   font-size: 11px;
   max-width: 130px;
+  flex-shrink: 0;
 }
 
 .mobile-hole-cards {

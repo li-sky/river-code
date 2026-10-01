@@ -22,6 +22,7 @@ import (
 )
 
 type RoomSettings struct {
+	Visibility            string `json:"visibility"`
 	SmallBlind            int64  `json:"smallBlind"`
 	BigBlind              int64  `json:"bigBlind"`
 	BuyIn                 int64  `json:"buyIn"`
@@ -35,6 +36,9 @@ type RoomSettings struct {
 }
 
 func (s RoomSettings) validate() error {
+	if s.Visibility != "public" && s.Visibility != "private" {
+		return errors.New("房间可见性须为公开或私人")
+	}
 	if s.VoiceMode != "" && s.VoiceMode != "free" && s.VoiceMode != "push-to-talk" {
 		return errors.New("语音模式须为自由发言或按住说话")
 	}
@@ -228,6 +232,10 @@ func (s *Server) listRooms(w http.ResponseWriter, r *http.Request) {
 	result := []any{}
 	for _, rr := range rooms {
 		rr.mu.Lock()
+		if rr.Settings.Visibility != "public" {
+			rr.mu.Unlock()
+			continue
+		}
 		seated := 0
 		for _, p := range rr.Players {
 			if p.Seat >= 0 {

@@ -23,6 +23,7 @@ export interface Config {
   spectatorVoiceEnabled: boolean;
 }
 export interface RoomSettings {
+  visibility: "public" | "private";
   smallBlind: number;
   bigBlind: number;
   buyIn: number;

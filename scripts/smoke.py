@@ -63,7 +63,7 @@ async def main():
         client.request('POST', '/api/auth/guest', {'name': f'Test {stamp[-6:]} {i}',
                                                  'password': os.environ.get('JOIN_PASSWORD', '')})
         users.append(client.request('GET', '/api/me'))
-    settings = {'smallBlind': 5, 'bigBlind': 10, 'buyIn': 1000, 'maxPlayers': 9,
+    settings = {'visibility': 'public', 'smallBlind': 5, 'bigBlind': 10, 'buyIn': 1000, 'maxPlayers': 9,
                 'actionSeconds': 30, 'voiceEnabled': True, 'chatEnabled': True, 'reactionsEnabled': True}
     room = clients[0].request('POST', '/api/rooms', {'name': 'Acceptance ' + stamp[-6:], 'settings': settings})['id']
     for client in clients:

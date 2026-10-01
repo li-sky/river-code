@@ -19,7 +19,7 @@ async def main():
     for i, client in enumerate(clients):
         client.request('POST', '/api/auth/guest', {'name': f'玩家 {i + 1}', 'password': os.environ.get('JOIN_PASSWORD', '')})
         users.append(client.request('GET', '/api/me'))
-    settings = {'smallBlind': 5, 'bigBlind': 10, 'buyIn': 1000, 'maxPlayers': 9,
+    settings = {'visibility': 'public', 'smallBlind': 5, 'bigBlind': 10, 'buyIn': 1000, 'maxPlayers': 9,
                 'actionSeconds': 120, 'voiceEnabled': True, 'voiceMode': 'free',
                 'spectatorVoiceEnabled': False, 'chatEnabled': True, 'reactionsEnabled': True}
     room = clients[0].request('POST', '/api/rooms', {'name': '九人满桌验收 ' + str(time.time_ns())[-5:], 'settings': settings})['id']

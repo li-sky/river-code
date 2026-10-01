@@ -16,7 +16,7 @@ async def prepare(path):
     for i, player in enumerate(players):
         player.request('POST', '/api/auth/guest', {'name': f'Recovery {time.time_ns() % 1000000} {i}',
                                                   'password': os.environ.get('JOIN_PASSWORD', '')})
-    settings = {'smallBlind': 5, 'bigBlind': 10, 'buyIn': 1000, 'maxPlayers': 9,
+    settings = {'visibility': 'public', 'smallBlind': 5, 'bigBlind': 10, 'buyIn': 1000, 'maxPlayers': 9,
                 'actionSeconds': 120, 'voiceEnabled': True, 'chatEnabled': True, 'reactionsEnabled': True}
     room = players[0].request('POST', '/api/rooms', {'name': 'Restart acceptance', 'settings': settings})['id']
     for i, player in enumerate(players):

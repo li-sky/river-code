@@ -46,6 +46,7 @@ import type {
 import { playSound, setSoundSettings, unlockAudio } from "./lib/sound";
 import { useVoice } from "./lib/voice";
 const defaultRoom: RoomSettings = {
+  visibility: "public",
   smallBlind: 10,
   bigBlind: 20,
   buyIn: 2000,
@@ -261,6 +262,30 @@ function SettingsFields({
   );
   return (
     <>
+      <label className="toggle-row room-visibility-field">
+        <span>
+          房间可见性
+          <small>
+            {value.visibility === "private"
+              ? "不在大厅显示，持邀请链接的用户登录后可加入"
+              : "在大厅显示，站内用户都可以加入"}
+          </small>
+        </span>
+        <select
+          className="room-select"
+          aria-label="房间可见性"
+          value={value.visibility}
+          onChange={(e) =>
+            onChange({
+              ...value,
+              visibility: e.target.value as RoomSettings["visibility"],
+            })
+          }
+        >
+          <option value="public">公开房间</option>
+          <option value="private">私人房间</option>
+        </select>
+      </label>
       <div className="form-grid">
         {number("smallBlind", "小盲注", 1, 500000)}
         {number("bigBlind", "大盲注", value.smallBlind * 2, 1000000)}
@@ -280,7 +305,7 @@ function SettingsFields({
             默认语音模式<small>玩家可临时切换自己的说话方式</small>
           </span>
           <select
-            className="room-voice-mode"
+            className="room-select"
             aria-label="默认语音模式"
             value={value.voiceMode || config.defaultVoiceMode || "free"}
             disabled={!config.voiceEnabled || !value.voiceEnabled}
@@ -685,7 +710,7 @@ export default function App() {
           <div className="lobby-info">
             <span>
               <span className="live-dot" />
-              {rooms.length} 张牌桌开放
+              {rooms.length} 张公开牌桌
             </span>
             <span>
               <Spade size={15} />
@@ -698,7 +723,7 @@ export default function App() {
           </div>
           <div className="section-heading">
             <h2>
-              开放牌桌 <span>{String(rooms.length).padStart(2, "0")}</span>
+              公开牌桌 <span>{String(rooms.length).padStart(2, "0")}</span>
             </h2>
             <span>邀请朋友，一起入座</span>
           </div>
@@ -766,7 +791,7 @@ export default function App() {
               </div>
               <h3>好牌局，从第一张桌开始</h3>
               <p>
-                现在还没有开放的牌桌。创建你的牌桌，
+                现在还没有公开的牌桌。创建你的牌桌，
                 <br />
                 把链接发给朋友，今晚的故事就此开始。
               </p>
@@ -1269,6 +1294,9 @@ function Room({
             </h1>
             <div className="room-subtitle">
               <span>NL HOLD’EM</span>
+              <span>
+                {state.settings.visibility === "private" ? "私人房间" : "公开房间"}
+              </span>
               <span>
                 盲注 {fmt(state.settings.smallBlind)} /{" "}
                 {fmt(state.settings.bigBlind)}
