@@ -2150,7 +2150,7 @@ function Room({
             )}
             <div className="bet-actions" aria-busy={submitting}>
               <Button
-                className="check-button"
+                className="call-button"
                 disabled={!myTurn || !connected || submitting || !toCall}
                 onClick={() => action("call")}
               >
@@ -2165,7 +2165,7 @@ function Room({
                 </span>
               </Button>
               <Button
-                className="primary"
+                className="primary raise-button"
                 disabled={
                   !myTurn ||
                   !connected ||
@@ -2625,7 +2625,7 @@ function Room({
             </p>
           </fieldset>
           <Button
-            className="primary full"
+            className="primary raise-button full"
             type="submit"
             disabled={
               !myHand?.canRaise ||

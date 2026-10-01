@@ -419,9 +419,7 @@ input[type="range"] {
   min-height: 48px;
 }
 .segmented button.active {
-  background: #23333b;
   color: #efddbd;
-  box-shadow: 0 2px 4px #0003;
 }
 .field {
   display: flex;
@@ -3244,6 +3242,171 @@ input[type="range"] {
   .room-page .bet-actions {
     gap: 6px;
   }
+}
+/* Tactile controls: one face, a solid bottom edge, and a short downward press.
+   Shadows do not change layout, so fixed docks and touch targets keep their size. */
+:where(.button, .icon-button, .profile-trigger, .room-card, .empty-seat,
+    .segmented button, .raise-presets button, .menu-item, .voice-button,
+    .push-talk, .chat-form button) {
+  --button-face: #203640;
+  --button-hover: #2b444f;
+  --button-edge: #0c1e27;
+  --button-border: #3e5965;
+  --button-ink: #e4eff1;
+  --button-depth: 4px;
+  --button-radius: 14px;
+  --button-weight: 800;
+}
+:is(.button, .icon-button, .profile-trigger, .room-card, .empty-seat,
+    .segmented button, .raise-presets button, .menu-item, .voice-button,
+    .push-talk, .chat-form button) {
+  background: var(--button-face);
+  color: var(--button-ink);
+  border: 2px solid var(--button-border);
+  border-radius: var(--button-radius);
+  box-shadow: 0 var(--button-depth) 0 var(--button-edge);
+  font-weight: var(--button-weight);
+  transform: translateY(0);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.1s ease,
+    transform 0.1s ease;
+}
+:is(.button, .icon-button, .profile-trigger, .room-card, .empty-seat,
+    .segmented button, .raise-presets button, .menu-item, .voice-button,
+    .push-talk, .chat-form button):hover:not(:disabled) {
+  background: var(--button-hover);
+  border-color: var(--button-border);
+  color: var(--button-ink);
+  transform: translateY(-1px);
+  box-shadow: 0 calc(var(--button-depth) + 1px) 0 var(--button-edge);
+}
+:is(.button, .icon-button, .profile-trigger, .room-card, .empty-seat,
+    .segmented button, .raise-presets button, .menu-item, .voice-button,
+    .push-talk, .chat-form button):active:not(:disabled) {
+  background: var(--button-face);
+  transform: translateY(var(--button-depth));
+  box-shadow: 0 0 0 var(--button-edge);
+}
+:is(.button, .icon-button, .profile-trigger, .room-card, .empty-seat,
+    .segmented button, .raise-presets button, .menu-item, .voice-button,
+    .push-talk, .chat-form button):disabled {
+  --button-face: #24353d;
+  --button-hover: #24353d;
+  --button-edge: #16252c;
+  --button-border: #354952;
+  --button-ink: #8fa3ac;
+  opacity: 1;
+  transform: none;
+}
+.primary,
+.check-button,
+.push-talk,
+.chat-form button {
+  --button-face: #78d52b;
+  --button-hover: #8de03e;
+  --button-edge: #438d16;
+  --button-border: #78d52b;
+  --button-ink: #173508;
+}
+.raise-button {
+  --button-face: #ffd05a;
+  --button-hover: #ffdb7a;
+  --button-edge: #b1841f;
+  --button-border: #ffd05a;
+  --button-ink: #473306;
+}
+.call-button {
+  --button-face: #58c8f4;
+  --button-hover: #78d5fa;
+  --button-edge: #2789b4;
+  --button-border: #58c8f4;
+  --button-ink: #103d51;
+}
+.fold-button {
+  --button-face: #ff8585;
+  --button-hover: #ff9c9c;
+  --button-edge: #b74955;
+  --button-border: #ff8585;
+  --button-ink: #53212b;
+}
+.icon-button,
+.profile-trigger,
+.voice-button {
+  --button-depth: 3px;
+  --button-radius: 12px;
+}
+.profile-trigger {
+  padding: 4px 10px;
+}
+.segmented {
+  gap: 8px;
+  padding: 6px 6px 10px;
+  border-radius: 18px;
+}
+.segmented button {
+  --button-depth: 3px;
+  padding: 8px 6px;
+  color: var(--muted);
+}
+.segmented button.active {
+  --button-face: #284127;
+  --button-hover: #345332;
+  --button-edge: #122c13;
+  --button-border: #78d52b;
+  --button-ink: #a5ef72;
+  color: var(--button-ink);
+}
+.room-card {
+  --button-face: #172b32;
+  --button-hover: #1d363d;
+  --button-depth: 6px;
+  --button-radius: 20px;
+  --button-weight: inherit;
+}
+.empty-seat {
+  --button-face: #234738;
+  --button-hover: #305c46;
+  --button-edge: #112d22;
+  --button-border: #528b60;
+  --button-ink: #b4ed96;
+  --button-radius: 50%;
+}
+.empty-seat .seat-label-suffix {
+  position: static;
+  font: inherit;
+  letter-spacing: inherit;
+}
+.menu-item {
+  margin-bottom: 8px;
+}
+.voice-button {
+  padding: 4px 10px;
+  white-space: normal;
+  text-align: left;
+}
+.voice-button > span {
+  background: transparent;
+  border: 0;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+.voice-joined {
+  --button-border: #78d52b;
+  --button-ink: #a5ef72;
+}
+.voice-joined > span {
+  background: transparent;
+  border: 0;
+  color: inherit;
+}
+.room-page .bet-actions .button {
+  border-radius: 14px;
+}
+.table-menu-body .social-actions {
+  padding-bottom: 4px;
 }
 /* Static feedback remains visible when motion is reduced. */
 @media (prefers-reduced-motion: reduce) {
