@@ -35,7 +35,7 @@ async function geometry(page, width) {
       bounds: rect(n),
       parts: [
         ...n.querySelectorAll(
-          ".seat-avatar-button,.seat-name,.seat-stack,.seat-cards .card,.seat-hand-rank,.seat-bet,.empty-seat,.avatar-emoji,.winner-crown,.dealer-button,.turn-timer,.player-badge",
+          ".seat-avatar-button,.seat-name,.seat-stack,.seat-cards .card,.seat-hand-rank,.seat-bet,.empty-seat,.avatar-emoji,.seat-win-count,.dealer-button,.turn-timer,.player-badge",
         ),
       ]
         .filter(visible)

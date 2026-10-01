@@ -14,12 +14,14 @@ RoomSettings {visibility:'public'|'private',smallBlind,bigBlind,buyIn,maxPlayers
 Private rooms use the existing /?room=<128-bit random room ID> invitation link: any authenticated identity with the link can read personalized state and join over WS. Private means hidden from discovery, with no separate room password or per-user invitation list. Public/private changes are host-only between hands, persist in the room snapshot, and broadcast after successful save. Links and existing members remain valid after switching.
 RoomSummary {id,name,hostId,players,settings,status}
 RoomState {id,name,hostId,settings,players:Player[],hand:HandView|null,messages:Message[],pinnedMessage:Message|null,version,voiceParticipantIds:string[]}; authoritative voice roster is capped at 9, connected seated players first, then permitted connected spectators. Both system and room spectator flags are required.
-Player {id,name,avatarUrl,avatarEmoji,seat:number,stack:number,connected:boolean,sittingOut:boolean}
+Player {id,name,avatarUrl,avatarEmoji,seat:number,stack:number,wins:number,connected:boolean,sittingOut:boolean}
 HandView {number,phase:'preflop'|'flop'|'turn'|'river'|'showdown'|'complete',board:string[],pot:number,dealerSeat:number,turnSeat:number,currentBet:number,minRaise:number,deadline:string,turnToken:string,players:HandPlayer[],winners?:{id,amount,description}[]}
 HandPlayer {id,seat,bet,totalBet,folded,allIn,cards:string[],acted:boolean,canRaise:boolean,currentHand?:string}
 Cards rank+suit eg As, Th, 2c; opponent hidden cards = [].
 `currentHand` is the Chinese category of the best five-card hand using this viewer's visible two hole cards and the already dealt board (3–5 cards). It is omitted before the flop, for hidden/folded hands, or invalid inputs. It updates with every personalized snapshot and is shown for opponents only when their cards are revealed at showdown. This hint does not determine payouts and never uses the deck or future board cards. Older clients can ignore the optional field; newer clients hide the hint when absent.
 Message {id,userId,name,text,at}
+
+`Player.wins` is the server-owned number of winning hands for this identity in this room. Each positive-payout winner counts once per completed hand, including shared/main/side pots. It survives stand, leave/rejoin, disconnect and snapshot recovery; a different room starts at zero. Private snapshots retain `winCounts` by identity and `lastCountedHand` with settlement in the same save/rollback operation; these fields are not public. There is no client command to set wins. Legacy snapshots without statistics start at zero and skip their already completed hand; an active legacy hand counts when it completes. No unavailable hand history is backfilled. The table shows one crown with the count for every seated player, highlights the current winner, and uses a text host marker.
 
 ## WS
 Server: {type:'state',state:RoomState}; {type:'error',message}; {type:'reaction',from,to,emoji}; {type:'signal',from,data}; {type:'sound',sound:'deal'|'chips'|'fold'|'win'}

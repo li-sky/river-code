@@ -377,6 +377,29 @@ func (r *room) syncStacks() {
 			p.Stack = hp.Stack
 		}
 	}
+	r.recordHandWins()
+}
+
+// Counts are part of the same saved transaction as settlement, never a view side effect.
+func (r *room) recordHandWins() {
+	if r.Hand == nil || !r.Hand.Finished() || r.Hand.Number <= r.LastCountedHand {
+		return
+	}
+	if r.WinCounts == nil {
+		r.WinCounts = map[string]int{}
+	}
+	seen := map[string]bool{}
+	for _, winner := range r.Hand.Winners {
+		if winner.Amount <= 0 || seen[winner.ID] {
+			continue
+		}
+		seen[winner.ID] = true
+		r.WinCounts[winner.ID]++
+		if p := r.player(winner.ID); p != nil {
+			p.Wins = r.WinCounts[winner.ID]
+		}
+	}
+	r.LastCountedHand = r.Hand.Number
 }
 func (r *room) cleanupLeavers() {
 	for i := len(r.Players) - 1; i >= 0; i-- {

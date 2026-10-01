@@ -50,6 +50,7 @@ export interface Player {
   avatarEmoji: string;
   seat: number;
   stack: number;
+  wins?: number;
   connected: boolean;
   sittingOut: boolean;
 }

@@ -64,6 +64,7 @@ type Player struct {
 	AvatarEmoji    string    `json:"avatarEmoji"`
 	Seat           int       `json:"seat"`
 	Stack          int64     `json:"stack"`
+	Wins           int       `json:"wins"`
 	Connected      bool      `json:"connected"`
 	SittingOut     bool      `json:"sittingOut"`
 	DisconnectedAt time.Time `json:"disconnectedAt,omitempty"`
@@ -77,19 +78,21 @@ type Message struct {
 	At     time.Time `json:"at"`
 }
 type roomData struct {
-	ID            string       `json:"id"`
-	Name          string       `json:"name"`
-	HostID        string       `json:"hostId"`
-	Settings      RoomSettings `json:"settings"`
-	Players       []*Player    `json:"players"`
-	Hand          *poker.Hand  `json:"hand"`
-	Messages      []Message    `json:"messages"`
-	PinnedMessage *Message     `json:"pinnedMessage"`
-	Version       uint64       `json:"version"`
-	Deadline      time.Time    `json:"deadline"`
-	LastDealer    int          `json:"lastDealer"`
-	HandNumber    int          `json:"handNumber"`
-	TurnToken     string       `json:"turnToken"`
+	ID              string         `json:"id"`
+	Name            string         `json:"name"`
+	HostID          string         `json:"hostId"`
+	Settings        RoomSettings   `json:"settings"`
+	Players         []*Player      `json:"players"`
+	Hand            *poker.Hand    `json:"hand"`
+	Messages        []Message      `json:"messages"`
+	PinnedMessage   *Message       `json:"pinnedMessage"`
+	Version         uint64         `json:"version"`
+	Deadline        time.Time      `json:"deadline"`
+	LastDealer      int            `json:"lastDealer"`
+	HandNumber      int            `json:"handNumber"`
+	TurnToken       string         `json:"turnToken"`
+	WinCounts       map[string]int `json:"winCounts"`
+	LastCountedHand int            `json:"lastCountedHand"`
 }
 type room struct {
 	mu sync.Mutex
@@ -140,7 +143,18 @@ func New(ctx context.Context, cfg config.Config, auth *identity.Service, db room
 		if d.ID == "" || d.ID != record.ID {
 			return nil, fmt.Errorf("invalid saved room %s", record.ID)
 		}
+		// Older snapshots have no history from which to rebuild win counts.
+		if d.WinCounts == nil {
+			d.WinCounts = map[string]int{}
+			for _, p := range d.Players {
+				d.WinCounts[p.ID] = p.Wins
+			}
+			if d.Hand != nil && d.Hand.Finished() {
+				d.LastCountedHand = d.Hand.Number
+			}
+		}
 		for _, p := range d.Players {
+			p.Wins = d.WinCounts[p.ID]
 			p.Connected = false
 			p.DisconnectedAt = time.Now()
 		}
@@ -290,7 +304,7 @@ func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := newID()
-	rr := &room{roomData: roomData{ID: id, Name: body.Name, HostID: u.ID, Settings: body.Settings, Players: []*Player{}, Messages: []Message{}, LastDealer: -1, Version: 1}, clients: map[string]*client{}, system: &s.cfg}
+	rr := &room{roomData: roomData{ID: id, Name: body.Name, HostID: u.ID, Settings: body.Settings, Players: []*Player{}, Messages: []Message{}, WinCounts: map[string]int{}, LastDealer: -1, Version: 1}, clients: map[string]*client{}, system: &s.cfg}
 	if err := s.save(r.Context(), rr); err != nil {
 		writeError(w, 503, "房间保存失败")
 		return
@@ -453,6 +467,7 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 	p.Name = u.Name
 	p.AvatarURL = u.AvatarURL
 	p.AvatarEmoji = u.Settings.AvatarEmoji
+	p.Wins = rr.WinCounts[u.ID]
 	p.Connected = true
 	p.Leaving = false
 	p.DisconnectedAt = time.Time{}

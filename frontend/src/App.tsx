@@ -1899,7 +1899,8 @@ function Room({
                           onClick={() =>
                             p.id === user.id ? setSelfEmoji(true) : setTarget(p)
                           }
-                          aria-label={`${p.name} 的互动菜单`}
+                          aria-label={`${p.name} 的互动菜单，本桌获胜 ${fmt(p.wins || 0)} 次${p.id === state.hostId ? "，房主" : ""}${winner ? "，本手赢家" : ""}`}
+                          title={`本桌获胜 ${fmt(p.wins || 0)} 次${winner ? " · 本手赢家" : ""}`}
                         >
                           <Avatar
                             name={p.name}
@@ -1915,16 +1916,27 @@ function Room({
                               {seconds}s
                             </span>
                           )}
-                          {winner && (
-                            <span className="winner-crown">
-                              <Crown size={15} />
-                            </span>
-                          )}
+                          <span
+                            className="seat-win-count"
+                            aria-label={`本桌获胜 ${fmt(p.wins || 0)} 次${winner ? "，本手赢家" : ""}`}
+                            title={`本桌获胜 ${fmt(p.wins || 0)} 次${winner ? " · 本手赢家" : ""}`}
+                          >
+                            <Crown size={12} />
+                            <span>{fmt(p.wins || 0)}</span>
+                          </span>
                         </button>
                         <div className="seat-name">
                           <span className="seat-player-name">{p.name}</span>
                           {p.id === user.id && <small>你</small>}
-                          {p.id === state.hostId && <Crown size={11} />}
+                          {p.id === state.hostId && (
+                            <span
+                              className="seat-host-label"
+                              aria-label="房主"
+                              title="房主"
+                            >
+                              主
+                            </span>
+                          )}
                         </div>
                         <div
                           className="seat-stack"

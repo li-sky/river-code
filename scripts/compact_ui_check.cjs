@@ -60,8 +60,28 @@ async function until(fn) {
         data: { name: "周四好友局", settings },
       })
     ).json();
-    const read = async () =>
-      await (await host.c.request.get(base + "/api/rooms/" + room.id)).json();
+    const expectedWins = new Map();
+    let countedHand = 0;
+    const read = async () => {
+      const state = await (
+        await host.c.request.get(base + "/api/rooms/" + room.id)
+      ).json();
+      if (state.hand?.phase === "complete" && state.hand.number > countedHand) {
+        for (const id of new Set(
+          state.hand.winners.filter((w) => w.amount > 0).map((w) => w.id),
+        )) {
+          expectedWins.set(id, (expectedWins.get(id) || 0) + 1);
+        }
+        countedHand = state.hand.number;
+      }
+      for (const player of state.players)
+        assert.equal(
+          player.wins,
+          expectedWins.get(player.id) || 0,
+          "Authoritative wins must match completed hands",
+        );
+      return state;
+    };
     async function enter(p, seat, buyIn = 2000) {
       await p.page.goto(base + "/?room=" + room.id);
       await p.page.getByText("连接正常", { exact: true }).waitFor();
@@ -80,6 +100,16 @@ async function until(fn) {
     }
     await enter(host, 0);
     await enter(guest, 1);
+    assert.equal(await host.page.locator(".seat-win-count").count(), 2);
+    assert.equal(
+      await host.page.locator(".seat-name .lucide-crown").count(),
+      0,
+    );
+    assert.equal(await host.page.locator(".seat-host-label").innerText(), "主");
+    assert.equal(
+      await host.page.locator(".table-seat .lucide-crown").count(),
+      2,
+    );
     for (const width of [1440, 768, 390, 320]) {
       await host.page.setViewportSize({ width, height: 844 });
       await host.page.evaluate(() => scrollTo(0, 0));
@@ -557,9 +587,65 @@ async function until(fn) {
         fullPage: true,
       });
     }
+    // Reconnect and explicitly leave/rejoin with the same identity, preserving this room's wins.
+    const winningPlayer = players.find(
+      (p) => (expectedWins.get(p.user.id) || 0) > 0,
+    );
+    const expected = expectedWins.get(winningPlayer.user.id);
+    await winningPlayer.page.reload();
+    await winningPlayer.page.getByText("连接正常", { exact: true }).waitFor();
+    await until(
+      async () =>
+        (
+          await winningPlayer.page
+            .locator(".own-seat .seat-win-count")
+            .innerText()
+        ).trim() === String(expected),
+    );
+    await winningPlayer.page
+      .getByRole("button", { name: "退出房间", exact: true })
+      .click();
+    await until(
+      async () =>
+        !(await read()).players.some((x) => x.id === winningPlayer.user.id),
+    );
+    const availableSeat = (await read()).players.some((x) => x.seat === 0)
+      ? 1
+      : 0;
+    await enter(winningPlayer, availableSeat);
+    await until(
+      async () =>
+        (
+          await winningPlayer.page
+            .locator(".own-seat .seat-win-count")
+            .innerText()
+        ).trim() === String(expected),
+    );
+    assert.equal(
+      await winningPlayer.page.locator(".own-seat .lucide-crown").count(),
+      1,
+    );
+    await winningPlayer.page.screenshot({
+      path: path.join(out, "win-counter-rejoined.png"),
+      fullPage: true,
+    });
+    const otherRoom = await (
+      await winningPlayer.c.request.post(base + "/api/rooms", {
+        data: { name: "新桌次数归零", settings },
+      })
+    ).json();
+    await winningPlayer.page.goto(base + "/?room=" + otherRoom.id);
+    await winningPlayer.page.getByText("连接正常", { exact: true }).waitFor();
+    await until(async () =>
+      (
+        await (
+          await winningPlayer.c.request.get(base + "/api/rooms/" + otherRoom.id)
+        ).json()
+      ).players.some((x) => x.id === winningPlayer.user.id && x.wins === 0),
+    );
     assert.equal(errors.length, 0, errors.join("\n"));
     console.log(
-      "PASS real room: responsive header/fixed dock, drawers/swipes/focus, chat/pin, pause/resume, raise/presets/bounds/keyboard, call/check/fold/all-in, stale modal, nine seats.",
+      "PASS real room: responsive header/fixed dock, drawers/swipes/focus, chat/pin, pause/resume, raise/presets/bounds/keyboard, call/check/fold/all-in, stale modal, nine seats; authoritative win counts, one crown, reconnect/leave/rejoin retention, new-room zero.",
     );
   } finally {
     await Promise.all(contexts.map((c) => c.close()));

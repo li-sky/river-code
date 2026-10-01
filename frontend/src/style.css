@@ -1504,15 +1504,33 @@ input[type="range"] {
   padding: 3px 4px;
   border-radius: 4px;
 }
-.winner-crown {
+.seat-win-count {
   position: absolute;
-  left: -9px;
-  top: -9px;
+  left: -3px;
+  top: -4px;
+  background: #152c26;
+  color: #c2d2c7;
+  border: 1px solid #54695b;
+  border-radius: 8px;
+  padding: 2px 3px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.winner .seat-win-count {
   background: var(--gold);
   color: #4a3418;
-  border-radius: 50%;
-  padding: 5px;
-  display: flex;
+  border-color: var(--gold);
+}
+.seat-host-label {
+  color: var(--gold);
+  font-size: 11px;
+  flex-shrink: 0;
 }
 .winner .avatar {
   border-color: var(--gold);
@@ -2595,11 +2613,6 @@ input[type="range"] {
   }
   .current-turn .avatar-emoji {
     display: none;
-  }
-  .winner-crown {
-    left: 0;
-    top: 0;
-    padding: 3px;
   }
   .empty-seat {
     grid-column: 1 / -1;
