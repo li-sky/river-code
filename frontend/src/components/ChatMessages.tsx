@@ -18,6 +18,8 @@ export function ChatMessages({ messages, players, userId, isHost, connected, pin
   const [activeId, setActiveId] = useState<string | null>(null);
   const [multiTouch, setMultiTouch] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [timestampId, setTimestampId] = useState<string | null>(null);
+  const tap = useRef<{ id: number; x: number; y: number; at: number } | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const end = useRef<HTMLDivElement>(null);
   const triggers = useRef(new Map<string, HTMLSpanElement>());
@@ -32,11 +34,15 @@ export function ChatMessages({ messages, players, userId, isHost, connected, pin
   useEffect(() => {
     const touches = new Set<number>();
     const down = (e: PointerEvent) => {
+      const content = e.target instanceof Element ? e.target.closest(".cs-message__content") : null;
+      const messageId = content?.closest(".chat-message")?.getAttribute("data-message-id");
+      setTimestampId((current) => messageId === current ? current : null);
       if (e.pointerType === "mouse") return;
       touches.add(e.pointerId);
-      if (touches.size > 1) { setMultiTouch(true); setActiveId(null); }
+      if (touches.size > 1) { tap.current = null; setMultiTouch(true); setActiveId(null); }
     };
     const up = (e: PointerEvent) => {
+      if (!(e.target instanceof Element) || !e.target.closest(".chat-message-trigger")) tap.current = null;
       touches.delete(e.pointerId);
       if (!touches.size) setMultiTouch(false);
     };
@@ -62,7 +68,7 @@ export function ChatMessages({ messages, players, userId, isHost, connected, pin
 
   return (
     <>
-      <div className="chat-messages" ref={list} onScroll={() => setActiveId(null)}>
+      <div className="chat-messages" ref={list} onScroll={() => { setActiveId(null); setTimestampId(null); tap.current = null; }}>
         {messages.length ? messages.map((m) => {
           const own = m.userId === userId;
           const canRecall = own && now >= Date.parse(m.at) && now - Date.parse(m.at) <= 120_000;
@@ -76,14 +82,35 @@ export function ChatMessages({ messages, players, userId, isHost, connected, pin
           return (
             <div className={`chat-message ${own ? "own-message" : ""}`} key={m.id} data-message-id={m.id}>
               <ContextMenu.Root open={activeId === m.id} onOpenChange={(open) => {
-                if (open) restoreFocus.current = true;
+                if (open) { restoreFocus.current = true; tap.current = null; setTimestampId(null); }
                 setActiveId((current) => open ? m.id : current === m.id ? null : current);
               }} modal={false}>
                 <ContextMenu.Trigger
                   className="chat-message-trigger" tabIndex={0} role="button" disabled={multiTouch}
+                  data-time-visible={timestampId === m.id ? "true" : undefined}
                   ref={(element) => { if (element) triggers.current.set(m.id, element); else triggers.current.delete(m.id); }}
                   aria-label={`${m.name}的消息：${m.text}`} aria-haspopup="menu" aria-expanded={activeId === m.id}
-                  onPointerDown={(e) => { e.stopPropagation(); if (!e.isPrimary || e.button !== 0) e.preventDefault(); }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    if (!e.isPrimary || e.button !== 0) { tap.current = null; e.preventDefault(); return; }
+                    if (e.pointerType !== "mouse" && (e.target as Element).closest(".cs-message__content")) {
+                      tap.current = { id: e.pointerId, x: e.clientX, y: e.clientY, at: performance.now() };
+                    }
+                  }}
+                  onPointerMove={(e) => {
+                    const start = tap.current;
+                    if (start?.id === e.pointerId && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 8) tap.current = null;
+                  }}
+                  onPointerCancel={() => { tap.current = null; }}
+                  onPointerUp={(e) => {
+                    const start = tap.current;
+                    tap.current = null;
+                    if (start?.id === e.pointerId && performance.now() - start.at < 500 &&
+                      Math.hypot(e.clientX - start.x, e.clientY - start.y) <= 8 && activeId === null &&
+                      (e.target as Element).closest(".cs-message__content")) {
+                      setTimestampId((current) => current === m.id ? null : m.id);
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " " || e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
                       e.preventDefault();

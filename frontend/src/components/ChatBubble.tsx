@@ -20,7 +20,8 @@ export function ChatBubble({ message, own, avatarUrl, pinned }: {
         {avatarUrl && <img src={avatarUrl} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
       </Avatar>
       <KitMessage.Header>
-        <span>{own ? "我" : message.name}</span><time dateTime={message.at}>{time}</time>
+        {!own && <span className="chat-sender-name">{message.name}</span>}
+        <time className="chat-message-time" dateTime={message.at}>{time}</time>
       </KitMessage.Header>
       <KitMessage.TextContent text={message.text} />
       {pinned && <KitMessage.Footer><span className="chat-pinned-tag"><Pin size={11} />已置顶</span></KitMessage.Footer>}
