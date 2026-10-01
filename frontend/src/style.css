@@ -988,18 +988,6 @@ input[type="range"] {
   font-family: Georgia, serif;
   font-weight: 700;
 }
-.card-corner b {
-  font-size: 14px;
-  font-weight: 400;
-  margin-top: 2px;
-}
-.card-bottom {
-  top: auto;
-  left: auto;
-  bottom: 5px;
-  right: 6px;
-  transform: rotate(180deg);
-}
 .card-suit {
   font-size: 34px;
   font-family: Georgia, serif;
@@ -1044,16 +1032,6 @@ input[type="range"] {
   font-size: 16px;
   left: 3px;
   top: 3px;
-}
-.card-small .card-corner b {
-  font-size: 14px;
-  margin-top: 1px;
-}
-.card-small .card-bottom {
-  left: auto;
-  top: auto;
-  right: 3px;
-  bottom: 3px;
 }
 .card-small .card-suit {
   font-size: 19px;
@@ -2404,9 +2382,6 @@ input[type="range"] {
   outline: 2px solid var(--gold);
   outline-offset: 4px;
 }
-.seat-cards .card-small .card-bottom {
-  display: none;
-}
 .seat-cards .card-small .card-suit {
   margin: 12px 0 0 8px;
 }
@@ -2444,12 +2419,6 @@ input[type="range"] {
     font-size: 20px;
     top: 4px;
     left: 4px;
-  }
-  .mobile-hole-cards .card-corner b {
-    font-size: 14px;
-  }
-  .mobile-hole-cards .card-bottom {
-    display: none;
   }
   .mobile-hole-cards .card-suit {
     font-size: 26px;
@@ -2774,12 +2743,6 @@ input[type="range"] {
     top: 4px;
     left: 3px;
   }
-  .board .card-corner b {
-    font-size: 14px;
-  }
-  .board .card-bottom {
-    display: none;
-  }
   .board .card-suit {
     font-size: 24px;
     margin: 20px 0 0 5px;
@@ -2871,9 +2834,6 @@ input[type="range"] {
   .seat-cards .card-corner {
     font-size: 14px;
   }
-  .seat-cards .card-corner b {
-    display: none;
-  }
   .seat-cards .card-suit {
     font-size: 18px;
     margin: 14px 0 0 8px;
@@ -2888,6 +2848,7 @@ input[type="range"] {
   .revealed-cards .card-small.card-face {
     width: 30px;
     height: 24px;
+    gap: 2px;
   }
   .revealed-cards .card-corner {
     position: static;
@@ -2895,13 +2856,9 @@ input[type="range"] {
     gap: 2px;
     font-size: 14px;
   }
-  .revealed-cards .card-corner b {
-    display: block;
+  .revealed-cards .card-small .card-suit {
     font-size: 14px;
     margin: 0;
-  }
-  .revealed-cards .card-suit {
-    display: none;
   }
   .own-seat .seat-cards {
     display: none;

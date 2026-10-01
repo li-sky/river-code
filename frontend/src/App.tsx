@@ -278,15 +278,8 @@ function Card({
         </div>
       ) : code ? (
         <>
-          <span className="card-corner">
-            {rank}
-            <b>{glyph}</b>
-          </span>
+          <span className="card-corner">{rank}</span>
           <span className="card-suit">{glyph}</span>
-          <span className="card-corner card-bottom">
-            {rank}
-            <b>{glyph}</b>
-          </span>
         </>
       ) : (
         <Spade size={22} />
