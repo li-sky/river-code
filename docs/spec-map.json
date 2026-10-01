@@ -61,7 +61,12 @@
         "backend/cmd/river",
         "Dockerfile",
         "compose.yaml",
-        "scripts/run-dev.sh"
+        "scripts/run-dev.sh",
+        ".github/workflows/ci-cd.yml",
+        "scripts/cd.py",
+        "scripts/install-cd.sh",
+        "scripts/test_cd.py",
+        "scripts/cd_acceptance.py"
       ],
       "path": "modules/runtime.md"
     },

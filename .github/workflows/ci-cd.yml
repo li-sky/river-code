@@ -1,0 +1,92 @@
+name: RIVER CI and deployment
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: river-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check-build-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the requested commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate deployment behavior and Compose
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_cd.py' -v
+          bash -n scripts/install-cd.sh
+          POSTGRES_PASSWORD=ci-check docker compose config --quiet
+
+      - name: Check backend rules and service
+        run: |
+          docker build --target backend -t river:check .
+          docker run --rm river:check sh -c 'go test ./... && go vet ./...'
+
+      - name: Build the production application
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          docker build --label "org.opencontainers.image.revision=$RELEASE_SHA" -t "river:$RELEASE_SHA" .
+
+      - name: Verify release and rollback with isolated PostgreSQL
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          python3 -m venv /tmp/river-cd-check
+          /tmp/river-cd-check/bin/pip install 'websockets==15.0.1'
+          /tmp/river-cd-check/bin/python scripts/cd_acceptance.py --image "river:$RELEASE_SHA"
+
+      - name: Queue the checked release on us1
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          DEPLOY_KEY: ${{ secrets.RIVER_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.RIVER_DEPLOY_KNOWN_HOSTS }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          task_latest_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          if [ "$task_latest_sha" != "$RELEASE_SHA" ]; then
+            echo 'A newer main commit exists; skip this superseded release.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          task_ssh_dir="$(mktemp -d)"
+          trap 'rm -rf "$task_ssh_dir"' EXIT
+          umask 077
+          printf '%s\n' "$DEPLOY_KEY" > "$task_ssh_dir/key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$task_ssh_dir/known_hosts"
+          unset DEPLOY_KEY KNOWN_HOSTS
+          task_ssh=(ssh -i "$task_ssh_dir/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$task_ssh_dir/known_hosts" -o ConnectTimeout=20 root@us1.skyli.xyz)
+          docker save "river:$RELEASE_SHA" | gzip | "${task_ssh[@]}" "deploy $RELEASE_SHA"
+          for task_attempt in $(seq 1 40); do
+            task_status="$("${task_ssh[@]}" "status $RELEASE_SHA")"
+            case "$task_status" in
+              deployed)
+                echo "Published $RELEASE_SHA to https://river.skyli.xyz" >> "$GITHUB_STEP_SUMMARY"
+                exit 0 ;;
+              failed|rollback_failed)
+                echo "Deployment failed: $task_status" >> "$GITHUB_STEP_SUMMARY"
+                exit 1 ;;
+              superseded)
+                echo 'A newer queued release replaced this commit.' >> "$GITHUB_STEP_SUMMARY"
+                exit 0 ;;
+              queued) sleep 15 ;;
+              *) echo 'Unexpected server deployment status'; exit 1 ;;
+            esac
+          done
+          echo "Checked release $RELEASE_SHA remains queued until all rooms are idle; the server retries every minute." >> "$GITHUB_STEP_SUMMARY"

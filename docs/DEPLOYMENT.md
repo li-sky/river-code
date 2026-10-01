@@ -145,6 +145,39 @@ docker compose up -d app
 
 备份包含私人手牌、会话与账号数据，应限制备份访问并另存到安全位置。备份 `.env` 时使用单独的安全位置。`docker compose down` 保留数据卷；`docker compose down -v` 会删除数据库卷与代理证书卷，请勿用作普通更新命令。
 
+## GitHub Actions 持续部署（us1）
+
+[工作流](../.github/workflows/ci-cd.yml) 对 main 的 PR 执行部署脚本单元测试、Compose 校验、Go test/vet、前端及生产镜像构建，以及隔离 PostgreSQL 上的发布/失败回滚演练。main push 和 main 上的手动运行通过全部检查后，把完整 SHA 标记的镜像传到 `root@us1.skyli.xyz`，公开地址为 https://river.skyli.xyz 。PR 不执行上传步骤。可在 [Actions 页面](https://github.com/li-sky/river-code/actions/workflows/ci-cd.yml) 选择 **Run workflow → main**，或运行：
+
+```bash
+gh workflow run ci-cd.yml --repo li-sky/river-code --ref main
+```
+
+生产文件位于 `/opt/river`；`.env` 和 OAuth 凭据只保留在服务器。GitHub Actions 使用 `RIVER_DEPLOY_SSH_KEY` 和 `RIVER_DEPLOY_KNOWN_HOSTS` 两个 Secret，禁止用管理员现有私钥替代。专用 ed25519 公钥在 root 的 `authorized_keys` 中配置 `restrict,command="/usr/bin/python3 /opt/river/cd/cd.py receive"`，只接受 `deploy <完整 SHA>` 和 `status <完整 SHA>`；无交互 shell、PTY 或转发。known_hosts 来自通过既有可信管理员连接读取的服务器公钥，主机验证保持开启。
+
+首次安装使用现有管理员 SSH 连接，在服务器的源码目录运行 `bash scripts/install-cd.sh`。它要求已存在当前生产布局、Python 3.12+ 和指定 Nginx upstream，安装 root 私有接收器、维护响应与 `river-deploy.timer`。生成专用密钥、添加受限公钥和设置 GitHub Secrets 属于一次性运维配置。后续修改发布器也须由管理员重新安装；Actions 上传应用版本不会自动替换 root 发布器。
+
+接收器验证镜像 revision 标签，下载固定仓库的对应源码，持锁写入 `pending-release.json`。服务器每分钟检查全部公开及私人房间快照；有在线玩家或未结束的手牌就暂缓。空闲时临时返回 503、再次检查、停止应用、生成并校验 `pg_dump -Fc` 备份，再切换 `current` 与镜像。容器就绪、本机及公网 `/healthz` 均通过后才更新 `deployed-version`。只有 app 被重建，数据库容器与生产卷保留。
+
+失败会恢复旧源码和镜像并记录失败。进程中断留下事务记录，下一次定时运行尝试恢复旧版；两版都不健康时保留维护响应供管理员处理。备份为 `/opt/river/backups/*.dump`，目录 0700、文件 0600，包含私人牌局与会话；不自动上传、清理或恢复数据库。涉及不兼容 schema 的变更仍需单独制定迁移和恢复计划。旧镜像及源码也保留，管理员按容量安排清理。
+
+```bash
+ssh root@us1.skyli.xyz 'python3 /opt/river/cd/cd.py status'
+ssh root@us1.skyli.xyz 'cat /opt/river/deployed-version; systemctl status river-deploy.timer --no-pager'
+ssh root@us1.skyli.xyz 'journalctl -u river-deploy.service -n 80 --no-pager'
+```
+
+Actions 最多等待发布 10 分钟；仍有玩家在线时会在运行摘要标明 **queued**，服务器继续自动等待空闲。绿色检查不代表排队版本已经上线。新的 main 可以替代旧队列；发布前 Actions 跳过已被更新 main 替代的版本。暂停队列处理使用 `systemctl stop river-deploy.timer` 并等待正在执行的 service 结束，不要直接改当前事务文件。人工回退时先暂停定时器、核对房间空闲及数据库兼容性，再切换到已验证的旧源码/镜像并重新检查健康；不要把 `docker compose down -v` 用于更新。
+
+这是单实例短暂重启，要求房间无人在线且没有进行中手牌；玩家即使只是停留在牌桌也会阻止发布。尚未实现在线手牌边界热更新、零停机、玩家版本通知或语音无缝迁移。隔离演练入口（会创建并删除专用测试项目及其测试卷）：
+
+```bash
+python3 -m unittest discover -s scripts -p 'test_cd.py' -v
+python3 -m venv /tmp/river-cd-check
+/tmp/river-cd-check/bin/pip install 'websockets==15.0.1'
+/tmp/river-cd-check/bin/python scripts/cd_acceptance.py --image river:local
+```
+
 ## 部署验收
 
 以下脚本会创建玩家和房间，恢复验收还会重启服务。请对使用独立数据库的验收实例运行，从项目根目录执行。需要 Python 3.11+，浏览器验收使用 Playwright Chromium；媒体单元测试需要已安装的前端 npm 依赖。

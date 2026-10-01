@@ -8,7 +8,7 @@
 
 需求、模块规格和页面交互集中在 [RIVER 项目文档](https://github.com/li-sky/river-spec)。后端每个模块有对应规格，前端按入口、大厅和牌桌分别维护；用户设置与媒体互动单独记录。
 
-源码与文档的对应关系见 [文档索引](docs/INDEX.md)，开发约定见 [AGENTS.md](AGENTS.md)。朋友试玩反馈、统一热重载和安全更新流程在文档中标为待实现方案。
+源码与文档的对应关系见 [文档索引](docs/INDEX.md)，开发约定见 [AGENTS.md](AGENTS.md)。GitHub Actions 在检查通过后自动将 main 发布到 us1，在线玩家或进行中牌局会让发布排队；见 [持续部署](docs/DEPLOYMENT.md#github-actions-持续部署us1)。朋友试玩反馈、统一热重载和手牌边界更新仍为待实现方案。
 
 SDD 操作见 [工作流](https://github.com/li-sky/river-spec/blob/main/workflow.md)。将两个仓库放在同级目录，使用 Python 3.11+：
 
