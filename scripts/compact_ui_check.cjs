@@ -202,42 +202,46 @@ async function until(fn) {
       "打开牌桌菜单",
     );
     async function swipe(page, selector, from, to) {
-      await page.locator(selector).evaluate((node, x) => {
-        const touch = new Touch({
-          identifier: 1,
-          target: node,
-          clientX: x,
-          clientY: 180,
+      const session = await page.context().newCDPSession(page);
+      const y = selector === ".game-layout" ? 180 : 35;
+      await session.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x: from, y, id: 1 }],
+      });
+      for (let step = 1; step <= 6; step++) {
+        await session.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [
+            {
+              x: from + ((to - from) * step) / 6,
+              y: y + (5 * step) / 6,
+              id: 1,
+            },
+          ],
         });
-        node.dispatchEvent(
-          new TouchEvent("touchstart", {
-            bubbles: true,
-            touches: [touch],
-            changedTouches: [touch],
-          }),
-        );
-      }, from);
-      await page.locator(selector).evaluate((node, x) => {
-        const touch = new Touch({
-          identifier: 1,
-          target: node,
-          clientX: x,
-          clientY: 185,
-        });
-        node.dispatchEvent(
-          new TouchEvent("touchend", {
-            bubbles: true,
-            changedTouches: [touch],
-          }),
-        );
-      }, to);
+        await wait(16);
+      }
+      await session.send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: [],
+      });
+      await session.detach();
     }
-    await swipe(host.page, ".game-layout", 10, 150);
+    // Genuine Chromium input begins in the middle, rather than at the edges.
+    await swipe(host.page, ".game-layout", 130, 260);
     await host.page.locator("#table-menu").waitFor();
     await wait(250);
+    await swipe(host.page, "#table-menu", 80, 220);
+    assert.equal(await host.page.locator("[role=dialog]:visible").count(), 1);
+    assert(await host.page.locator("#table-menu").isVisible());
     await swipe(host.page, "#table-menu", 200, 40);
     await host.page.locator("#table-menu").waitFor({ state: "hidden" });
-    await swipe(host.page, ".game-layout", 380, 220);
+    assert.equal(
+      await host.page.locator("#table-chat").count(),
+      0,
+      "Menu close opened chat",
+    );
+    await swipe(host.page, ".game-layout", 260, 130);
     await host.page.locator("#table-chat").waitFor();
     await wait(250);
     const chatBounds = await host.page.locator("#table-chat").evaluate((x) => {
@@ -257,8 +261,16 @@ async function until(fn) {
       .getByRole("region", { name: "置顶消息", exact: true })
       .waitFor();
     await host.page.screenshot({ path: path.join(out, "right-drawer.png") });
+    await swipe(host.page, "#table-chat", 280, 100);
+    assert.equal(await host.page.locator("[role=dialog]:visible").count(), 1);
+    assert(await host.page.locator("#table-chat").isVisible());
     await swipe(host.page, "#table-chat", 100, 280);
     await host.page.locator("#table-chat").waitFor({ state: "hidden" });
+    assert.equal(
+      await host.page.locator("#table-menu").count(),
+      0,
+      "Chat close opened menu",
+    );
     await guest.page
       .getByRole("button", { name: "牌桌聊天", exact: true })
       .click();
@@ -348,6 +360,35 @@ async function until(fn) {
       ),
       min + 1,
     );
+    const range = await dlg
+      .getByLabel("加注筹码滑块", { exact: true })
+      .boundingBox();
+    await p.page.mouse.move(
+      range.x + range.width / 4,
+      range.y + range.height / 2,
+    );
+    await p.page.mouse.down();
+    await p.page.mouse.move(
+      range.x + range.width * 0.75,
+      range.y + range.height / 2,
+      { steps: 6 },
+    );
+    await p.page.mouse.up();
+    assert(
+      Number(
+        await dlg.getByLabel("加注到的总金额", { exact: true }).inputValue(),
+      ) >
+        min + 1,
+      "Range drag did not adjust amount",
+    );
+    assert.equal(
+      await p.page.locator("#table-menu, #table-chat").count(),
+      0,
+      "Range drag opened a drawer",
+    );
+    await dlg
+      .getByLabel("加注到的总金额", { exact: true })
+      .fill(String(min + 1));
     await p.page.screenshot({ path: path.join(out, "raise-modal.png") });
     await dlg.getByRole("button", { name: /确认加注至/ }).click();
     await until(async () => (await read()).hand.turnToken !== s.hand.turnToken);

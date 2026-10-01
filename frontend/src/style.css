@@ -2771,7 +2771,7 @@ input[type="range"] {
   gap: 6px 10px;
   border-radius: 0;
 }
-.room-page .game-layout {
+.room-page {
   touch-action: pan-y;
 }
 .room-page .acting-player {

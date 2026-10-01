@@ -215,10 +215,7 @@ function Drawer({
   title: string;
   id: string;
   children: ReactNode;
-  onSwipe: {
-    onTouchStart: (e: React.TouchEvent) => void;
-    onTouchEnd: (e: React.TouchEvent) => void;
-  };
+  onSwipe: React.HTMLAttributes<HTMLDivElement>;
 }) {
   const opener = useRef<HTMLElement | null>(null);
   return (
@@ -1159,8 +1156,7 @@ function Room({
   const [state, setState] = useState<RoomState | null>(null),
     [connected, setConnected] = useState(false),
     [fatal, setFatal] = useState(false),
-    [chatOpen, setChatOpen] = useState(false),
-    [menuOpen, setMenuOpen] = useState(false),
+    [drawer, setDrawer] = useState<"left" | "right" | null>(null),
     [raiseOpen, setRaiseOpen] = useState(false),
     [settingsOpen, setSettingsOpen] = useState(false),
     [rulesOpen, setRulesOpen] = useState(false),
@@ -1189,8 +1185,33 @@ function Room({
     tableArea = useRef<HTMLDivElement>(null),
     roomPage = useRef<HTMLElement>(null),
     actionDock = useRef<HTMLElement>(null),
-    swipeStart = useRef<{ x: number; y: number } | null>(null),
+    swipeStart = useRef<{
+      pointerId: number;
+      x: number;
+      y: number;
+      side: "left" | "right" | "table";
+      drawer: "left" | "right" | null;
+      axis: "pending" | "horizontal" | "vertical";
+    } | null>(null),
+    wheelSwipe = useRef<{
+      at: number;
+      x: number;
+      y: number;
+      side: "left" | "right" | "table";
+      drawer: "left" | "right" | null;
+      consumed: boolean;
+    } | null>(null),
     bubbleTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const chatOpen = drawer === "right",
+    menuOpen = drawer === "left";
+  const setMenuOpen = (open: boolean) =>
+    setDrawer((current) =>
+      open ? "left" : current === "left" ? null : current,
+    );
+  const setChatOpen = (open: boolean) =>
+    setDrawer((current) =>
+      open ? "right" : current === "right" ? null : current,
+    );
   const send = useCallback(
     (message: Record<string, unknown>) => {
       if (ws.current?.readyState === WebSocket.OPEN)
@@ -1364,6 +1385,10 @@ function Room({
     setRaiseOpen(false);
   }, [hand?.turnToken, connected]);
   useEffect(() => {
+    if (!config.chatEnabled || state?.settings.chatEnabled === false)
+      setDrawer((current) => (current === "right" ? null : current));
+  }, [config.chatEnabled, state?.settings.chatEnabled]);
+  useEffect(() => {
     if (!actionDock.current) return;
     const observer = new ResizeObserver(([entry]) => {
       roomPage.current?.style.setProperty(
@@ -1375,43 +1400,134 @@ function Room({
     return () => observer.disconnect();
   }, [state?.id]);
   const swipe = (side: "left" | "right" | "table") => ({
-    onTouchStart: (e: React.TouchEvent) => {
+    onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
       if (side !== "table") e.stopPropagation();
-      const target = e.target as HTMLElement;
       if (
-        target.closest("input, button, select, a") ||
-        e.touches.length !== 1
+        !e.isPrimary ||
+        e.button !== 0 ||
+        (side === "table" && !e.currentTarget.contains(e.target as Node)) ||
+        (e.target as HTMLElement).closest(
+          "input, button, select, a, textarea, [contenteditable], [role=slider]",
+        ) ||
+        (side === "table" && drawer !== null)
       ) {
         swipeStart.current = null;
         return;
       }
-      swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      swipeStart.current = {
+        pointerId: e.pointerId,
+        x: e.clientX,
+        y: e.clientY,
+        side,
+        drawer,
+        axis: "pending",
+      };
     },
-    onTouchEnd: (e: React.TouchEvent) => {
+    onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
+      if (side !== "table") e.stopPropagation();
+      const start = swipeStart.current;
+      if (!start || start.pointerId !== e.pointerId || start.side !== side)
+        return;
+      const dx = Math.abs(e.clientX - start.x),
+        dy = Math.abs(e.clientY - start.y);
+      if (start.axis === "pending" && Math.max(dx, dy) >= 12) {
+        start.axis = dx > dy * 1.5 ? "horizontal" : "vertical";
+        if (start.axis === "horizontal")
+          e.currentTarget.setPointerCapture(e.pointerId);
+      }
+      if (start.axis === "horizontal") {
+        e.preventDefault();
+        // Mouse selection must not leave highlighted text after a drawer drag.
+        if (e.pointerType === "mouse") window.getSelection()?.removeAllRanges();
+      }
+    },
+    onPointerUp: (e: React.PointerEvent<HTMLElement>) => {
       if (side !== "table") e.stopPropagation();
       const start = swipeStart.current;
       swipeStart.current = null;
-      if (!start || !e.changedTouches.length) return;
-      const dx = e.changedTouches[0].clientX - start.x;
-      const dy = e.changedTouches[0].clientY - start.y;
-      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-      if (side === "left" && dx < 0) setMenuOpen(false);
-      else if (side === "right" && dx > 0) setChatOpen(false);
-      else if (side === "table") {
-        if (start.x < 32 && dx > 0) setMenuOpen(true);
-        if (
-          start.x > window.innerWidth - 32 &&
-          dx < 0 &&
-          config.chatEnabled &&
-          state?.settings.chatEnabled
-        )
-          setChatOpen(true);
-      }
+      if (
+        !start ||
+        start.pointerId !== e.pointerId ||
+        start.side !== side ||
+        start.drawer !== drawer ||
+        start.axis !== "horizontal"
+      )
+        return;
+      const dx = e.clientX - start.x,
+        dy = e.clientY - start.y;
+      if (Math.abs(dx) >= 60 && Math.abs(dx) > Math.abs(dy) * 1.5)
+        finishSwipe(side, dx);
     },
-    onTouchCancel: () => {
+    onPointerCancel: (e: React.PointerEvent<HTMLElement>) => {
+      if (side !== "table") e.stopPropagation();
       swipeStart.current = null;
     },
+    onLostPointerCapture: (e: React.PointerEvent<HTMLElement>) => {
+      if (side !== "table") e.stopPropagation();
+      // Touch has implicit capture on the starting child. Moving capture to
+      // this surface emits a bubbled loss from that child; it is not a cancel.
+      if (
+        e.target === e.currentTarget &&
+        swipeStart.current?.pointerId === e.pointerId
+      )
+        swipeStart.current = null;
+    },
+    onWheel: (e: React.WheelEvent<HTMLElement>) => {
+      if (side !== "table") e.stopPropagation();
+      if (
+        e.ctrlKey ||
+        (side === "table" && !e.currentTarget.contains(e.target as Node)) ||
+        (e.target as HTMLElement).closest(
+          "input, button, select, a, textarea, [contenteditable], [role=slider]",
+        )
+      )
+        return;
+      const at = performance.now();
+      if (!wheelSwipe.current || at - wheelSwipe.current.at > 250) {
+        wheelSwipe.current = { at, x: 0, y: 0, side, drawer, consumed: false };
+      }
+      const gesture = wheelSwipe.current;
+      gesture.at = at;
+      // Keep the consumed gesture across portal changes so inertia cannot close
+      // the drawer that the same trackpad gesture just opened.
+      if (
+        gesture.consumed ||
+        gesture.side !== side ||
+        gesture.drawer !== drawer
+      )
+        return;
+      const unit =
+        e.deltaMode === 1
+          ? 16
+          : e.deltaMode === 2
+            ? e.currentTarget.clientWidth
+            : 1;
+      gesture.x -= e.deltaX * unit;
+      gesture.y += Math.abs(e.deltaY * unit);
+      if (gesture.y >= 12 && gesture.y >= Math.abs(gesture.x))
+        gesture.consumed = true;
+      if (
+        !gesture.consumed &&
+        Math.abs(gesture.x) >= 60 &&
+        Math.abs(gesture.x) > gesture.y * 1.5
+      ) {
+        gesture.consumed = true;
+        finishSwipe(side, gesture.x);
+      }
+    },
   });
+  const finishSwipe = (side: "left" | "right" | "table", dx: number) => {
+    if (side === "table" && drawer === null) {
+      if (dx > 0) setDrawer("left");
+      else if (config.chatEnabled && state?.settings.chatEnabled)
+        setDrawer("right");
+    } else if (
+      (side === "left" && drawer === "left" && dx < 0) ||
+      (side === "right" && drawer === "right" && dx > 0)
+    ) {
+      setDrawer(null);
+    }
+  };
   if (!state)
     return (
       <main className="room-loading">
@@ -1486,7 +1602,7 @@ function Room({
     }
   };
   return (
-    <main className="room-page" ref={roomPage}>
+    <main className="room-page" ref={roomPage} {...swipe("table")}>
       <header className="room-topbar">
         <button
           className="icon-button"
@@ -1569,7 +1685,7 @@ function Room({
           链接已复制
         </span>
       )}
-      <div className="game-layout" {...swipe("table")}>
+      <div className="game-layout">
         <section className="game-main">
           <div className="table-status">
             <span className="live-dot" />
