@@ -10,4 +10,8 @@
 - 朋友反馈、统一热重载与安全更新目前为方案。不得仅凭重连、Vite HMR 或快照恢复将这些能力标为完成。
 - 不提交真实环境文件、账号凭据、会话、TURN 密钥、上传文件或生成产物。GitHub 仓库访问令牌不能作为应用 OAuth Client Secret。
 - 规则、权限、恢复或存储变化验证相关边界；低影响的样式和文案不增加镜像实现的测试。常规检查为后端 `go test ./...` 和前端 `npm run build`；媒体变化运行 `scripts/test-media.sh`。真实 PostgreSQL、GitHub OAuth 和公网 TURN 的证据单独记录。
-- 外部规格当前不可访问时，明确待同步项及必要假设，结合仓库现有契约继续已授权工作。不要把源码缺陷当成产品需求。
+- 工作流以 [river-spec/workflow.md](https://github.com/li-sky/river-spec/blob/main/workflow.md) 为准；每次改进用一份 `plans/<slug>.md` 记录问题、预期、验收、任务和结果。通过 `scripts/sdd.sh` 执行 new/check/start/run/finish，默认读取同级 river-spec，也可设置 `RIVER_SPEC_DIR`。
+- 开始前补充计划并提交规格仓库；代码提交使用 `SDD-Plan: https://github.com/li-sky/river-spec/blob/<spec-commit>/plans/<slug>.md` footer，最终计划保存代码提交和当前验证证据。不得使用会漂移的 main 链接替代交付依据。
+- 按风险运行必需检查；人工验收需实际确认并写清证据，不能仅凭测试文件存在或自动检查成功勾选。`finish` 的 done 只表示开发验收完毕，发布状态独立，脚本不会自动部署。
+- 代理并行工作要明确文件所有权与接口，集成者负责相关规格、兼容性、差异审阅和最终检查。已有授权范围内直接推进，不把计划变成重复审批流程。
+- 外部规格当前不可访问时，明确待同步项及必要假设，结合仓库现有契约继续已授权工作。提交前补齐相关规格与验证；不要把源码缺陷当成产品需求。

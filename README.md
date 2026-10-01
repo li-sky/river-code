@@ -6,9 +6,23 @@
 
 ## 文档与 SDD
 
-需求、模块规格和页面交互集中在 [RIVER 项目文档](https://chatgpt.com/space/page_4a6ca15ed15c8191a7ab8d94079c1b56)。后端每个模块有对应规格，前端按入口、大厅和牌桌分别维护；用户设置与媒体互动单独记录。
+需求、模块规格和页面交互集中在 [RIVER 项目文档](https://github.com/li-sky/river-spec)。后端每个模块有对应规格，前端按入口、大厅和牌桌分别维护；用户设置与媒体互动单独记录。
 
 源码与文档的对应关系见 [文档索引](docs/INDEX.md)，开发约定见 [AGENTS.md](AGENTS.md)。朋友试玩反馈、统一热重载和安全更新流程在文档中标为待实现方案。
+
+SDD 操作见 [工作流](https://github.com/li-sky/river-spec/blob/main/workflow.md)。将两个仓库放在同级目录，使用 Python 3.11+：
+
+```bash
+./scripts/sdd.sh new mobile-raise-input --title "改善手机加注输入" --spec table --risk ui
+# 填写 ../river-spec/plans/mobile-raise-input.md 的问题、预期与验收场景，然后：
+./scripts/sdd.sh check plans/mobile-raise-input.md
+./scripts/sdd.sh start plans/mobile-raise-input.md
+# 实现、提交代码，并实际确认验收场景后运行检查：
+./scripts/sdd.sh run plans/mobile-raise-input.md
+./scripts/sdd.sh finish plans/mobile-raise-input.md
+```
+
+检查工具只核对结构和执行证据，人工场景需由执行者实际验证；开发完成与发布分开记录。
 
 ## 启动
 
