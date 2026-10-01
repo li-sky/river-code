@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+!.env.example
+frontend/node_modules
+frontend/dist
+backend/river
+backend/uploads
+uploads
+backups
+*.log
+*.test
+toolchain
