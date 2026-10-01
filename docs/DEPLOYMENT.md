@@ -157,7 +157,7 @@ gh workflow run ci-cd.yml --repo li-sky/river-code --ref main
 
 首次安装使用现有管理员 SSH 连接，在服务器的源码目录运行 `bash scripts/install-cd.sh`。它要求已存在当前生产布局、Python 3.12+ 和指定 Nginx upstream，安装 root 私有接收器、维护响应与 `river-deploy.timer`。生成专用密钥、添加受限公钥和设置 GitHub Secrets 属于一次性运维配置。后续修改发布器也须由管理员重新安装；Actions 上传应用版本不会自动替换 root 发布器。
 
-接收器验证镜像 revision 标签，下载固定仓库的对应源码，持锁写入 `pending-release.json`。服务器每分钟检查全部公开及私人房间快照；有在线玩家或未结束的手牌就暂缓。空闲时临时返回 503、再次检查、停止应用、生成并校验 `pg_dump -Fc` 备份，再切换 `current` 与镜像。容器就绪、本机及公网 `/healthz` 均通过后才更新 `deployed-version`。只有 app 被重建，数据库容器与生产卷保留。
+接收器验证镜像 revision 标签，下载固定仓库的对应源码，持锁写入 `pending-release.json`。服务器每分钟检查全部公开及私人房间快照；有在线玩家或未结束的手牌就暂缓。空闲时临时返回 503、再次检查、停止应用、生成并校验 `pg_dump -Fc` 备份，再切换 `current` 与镜像。维护期间仅 `/healthz` 继续转发，容器就绪、本机及公网检查均通过后才开放页面与 WebSocket 并更新 `deployed-version`。只有 app 被重建，数据库容器与生产卷保留。
 
 失败会恢复旧源码和镜像并记录失败。进程中断留下事务记录，下一次定时运行尝试恢复旧版；两版都不健康时保留维护响应供管理员处理。备份为 `/opt/river/backups/*.dump`，目录 0700、文件 0600，包含私人牌局与会话；不自动上传、清理或恢复数据库。涉及不兼容 schema 的变更仍需单独制定迁移和恢复计划。旧镜像及源码也保留，管理员按容量安排清理。
 

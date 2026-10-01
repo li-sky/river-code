@@ -25,6 +25,19 @@ if gate not in text:
     if not backup.exists():
         backup.write_text(text)
     path.write_text(text.replace(location, '    location / {\n' + gate + '        proxy_pass http://127.0.0.1:18080;', 1))
+text = path.read_text()
+health = '''    location = /healthz {
+        proxy_pass http://127.0.0.1:18080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header Cache-Control "no-store" always;
+    }
+
+'''
+if '    location = /healthz {' not in text:
+    location = '    location / {\n' + gate
+    assert location in text, 'Expected the RIVER maintenance gate'
+    path.write_text(text.replace(location, health + location, 1))
 PY
 nginx -t
 systemctl reload nginx

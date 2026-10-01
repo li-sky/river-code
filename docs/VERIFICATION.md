@@ -1,6 +1,6 @@
 # 验证记录
 
-2026-10-01 持续部署：Linux 上实际运行 15 项发布器单元测试通过，覆盖在线/手牌暂缓、到达竞态、备份失败、健康失败回滚、中断恢复及受限命令。`scripts/cd_acceptance.py` 在 us1 上使用随机名称的独立 Compose 项目和 PostgreSQL 卷通过：私人房间在线玩家阻止发布、离线进行中手牌阻止发布、空闲后真实备份与版本切换、会话及环境文件保留、故意失败的镜像切回旧应用且维护标记移除；测试项目及其测试卷已清理。生产数据未用于该演练。真实 Actions 和线上版本结果由 [CD 计划](https://github.com/li-sky/river-spec/blob/main/plans/github-cd.md) 保存。
+2026-10-01 持续部署：Linux 上实际运行 16 项发布器单元测试通过，覆盖在线/手牌暂缓、到达竞态、备份失败、健康失败回滚、中断恢复及受限命令。`scripts/cd_acceptance.py` 在 us1 上使用随机名称的独立 Compose 项目和 PostgreSQL 卷通过：私人房间在线玩家阻止发布、离线进行中手牌阻止发布、空闲后真实备份与版本切换、会话及环境文件保留、故意失败的镜像切回旧应用且维护标记移除；测试项目及其测试卷已清理。生产数据未用于该演练。真实 Actions 和线上版本结果由 [CD 计划](https://github.com/li-sky/river-spec/blob/main/plans/github-cd.md) 保存。
 
 2026-09-30，在实际 Go 服务、PostgreSQL 17 和 Chromium 浏览器上完成以下检查。浏览器验收使用独立会话及模拟麦克风，不使用假牌局或前端自结算。
 

@@ -219,12 +219,12 @@ class Deployment:
             atomic_write(self.maintenance, "Deployment recovery in progress\n", mode=0o644)
             self.switch(previous, transaction["previousOverride"])
             self.start()
-            self.maintenance.unlink(missing_ok=True)
             try:
                 self.health()
             except Exception:
                 atomic_write(self.maintenance, "Deployment recovery requires attention\n", mode=0o644)
                 raise
+            self.maintenance.unlink(missing_ok=True)
             atomic_write(self.root / "deployed-version", transaction["previousVersion"] + "\n")
             atomic_write(self.root / "deployed-at", transaction["previousAt"])
             self.record(sha, "failed", previousVersion=transaction["previousVersion"],
@@ -281,8 +281,8 @@ class Deployment:
                 write_json(self.transaction, transaction)
                 self.switch(release, "services:\n  app:\n    image: " + self.image(sha) + "\n")
                 self.start()
-                self.maintenance.unlink(missing_ok=True)
                 self.health()
+                self.maintenance.unlink(missing_ok=True)
                 atomic_write(self.root / "deployed-version", sha + "\n")
                 atomic_write(self.root / "deployed-at", time.strftime("%Y-%m-%dT%H:%M:%SZ\n", time.gmtime()))
                 self.record(sha, "deployed", previousVersion=old_version, backup=backup)
@@ -296,8 +296,8 @@ class Deployment:
                         atomic_write(self.maintenance, "Deployment recovery in progress\n", mode=0o644)
                         self.switch(old_source, old_override)
                         self.start()
-                        self.maintenance.unlink(missing_ok=True)
                         self.health()
+                        self.maintenance.unlink(missing_ok=True)
                         atomic_write(self.root / "deployed-version", old_version + "\n")
                         atomic_write(self.root / "deployed-at", old_at)
                     except Exception as rollback_error:

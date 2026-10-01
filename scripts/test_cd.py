@@ -106,6 +106,11 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(self.deployment.status(NEW), "failed")
         self.assertFalse(self.deployment.maintenance.exists())
 
+    def test_public_health_is_verified_before_reopening_requests(self):
+        self.deployment.health.side_effect = lambda: self.assertTrue(self.deployment.maintenance.exists())
+        self.assertEqual(self.deployment.deploy(), "deployed")
+        self.assertFalse(self.deployment.maintenance.exists())
+
     def test_failed_rollback_keeps_maintenance_and_recovery_record(self):
         self.deployment.start.side_effect = RuntimeError("no healthy app")
         with self.assertRaisesRegex(RuntimeError, "Deployment and rollback failed"):
