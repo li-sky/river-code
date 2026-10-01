@@ -1247,6 +1247,9 @@ input[type="range"] {
   margin-top: 12px;
   text-shadow: 0 1px 3px #000;
 }
+.hand-winner + .hand-winner:before {
+  content: " / ";
+}
 .table-seat {
   position: absolute;
   top: var(--seat-y);
@@ -1298,6 +1301,11 @@ input[type="range"] {
 .seat-name small {
   font-size: 14px;
   color: #d0b78d;
+}
+.seat-player-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .seat-name svg {
   color: var(--gold);
@@ -1460,6 +1468,9 @@ input[type="range"] {
   padding: 3px 7px;
   white-space: nowrap;
   animation: chips-in 0.2s;
+}
+.seat-action-info {
+  display: contents;
 }
 .seat-bet .chip {
   width: 14px;
@@ -2392,44 +2403,67 @@ input[type="range"] {
     width: 100%;
   }
   .table-area {
-    height: 580px;
+    height: 636px;
     max-width: 440px;
   }
-  .table-area.nine-seats {
-    height: 780px;
+  .table-area.short-table {
+    height: 424px;
   }
   .poker-table {
-    left: 13%;
-    width: 74%;
-    top: 12%;
-    height: 76%;
-    border-radius: 44%;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: 106px 106px 212px 106px 106px;
+    background: none;
+    border: 0;
+    box-shadow: none;
+  }
+  .short-table .poker-table {
+    grid-template-rows: 106px 212px 106px;
   }
   .table-rail {
-    inset: 6px;
+    inset: 44px 7% 34px;
     border-radius: 44%;
+    background: #243b34;
+    box-shadow:
+      0 0 0 5px #182924,
+      0 0 0 6px #52634b,
+      inset 0 0 0 6px #0c221c;
   }
   .felt {
-    inset: 10px;
+    inset: 52px calc(7% + 8px) 42px;
     border-radius: 44%;
   }
   .felt-wordmark {
-    top: 20%;
+    top: 29%;
   }
   .felt-wordmark b {
     font-size: 18px;
     letter-spacing: 4px;
   }
   .community {
-    top: 50%;
+    top: calc(50% - 5px);
     width: 100%;
   }
   .board {
+    --board-card-width: clamp(32px, 10vw, 40px);
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    width: calc(3 * var(--board-card-width) + 8px);
     gap: 4px;
   }
   .board .card {
-    width: clamp(28px, 9vw, 44px);
-    height: 62px;
+    grid-column: span 2;
+    width: var(--board-card-width);
+    height: 54px;
+  }
+  .board .card:nth-child(4) {
+    grid-column: 2 / span 2;
+  }
+  .board .card:nth-child(5) {
+    grid-column: 4 / span 2;
   }
   .board .card-corner {
     font-size: 18px;
@@ -2443,24 +2477,51 @@ input[type="range"] {
   .pot {
     gap: 8px;
     padding: 4px 10px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
   .pot > strong {
     font-size: 28px;
+    line-height: 30px;
   }
   .pot-chips {
     display: none;
   }
   .hand-caption {
-    max-width: 210px;
-    font-size: 14px;
-    margin-top: 12px;
+    max-width: 230px;
+    width: 100%;
+    font-size: 13px;
+    line-height: 18px;
+    min-height: 18px;
+    max-height: 36px;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+    margin-top: 8px;
+  }
+  .hand-winner {
+    display: block;
+  }
+  .hand-winner + .hand-winner:before {
+    content: none;
+  }
+  .winner-description {
+    display: none;
   }
   .table-seat {
-    left: var(--seat-mobile-x);
-    top: var(--seat-mobile-y);
-    min-width: 82px;
-    height: 116px;
+    grid-row: var(--seat-row);
+    grid-column: var(--seat-column);
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    min-width: 0;
+    height: 106px;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    grid-template-rows: 28px 24px 24px 20px;
+    align-content: start;
+    align-items: center;
+    column-gap: 3px;
+    padding-inline: 2px;
   }
   .table-seat .avatar {
     width: 48px;
@@ -2468,46 +2529,104 @@ input[type="range"] {
     border-width: 2px;
     font-size: 18px;
   }
+  .table-seat .avatar-emoji {
+    right: 0;
+    bottom: 0;
+    font-size: 16px;
+    padding: 2px;
+  }
   .seat-avatar-button {
     min-width: 48px;
     height: 48px;
+    grid-column: 1;
+    grid-row: 2 / 4;
   }
   .seat-name {
-    font-size: 14px;
-    max-width: 84px;
-    margin-top: 8px;
-    padding: 2px 4px;
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 13px;
+    max-width: 100%;
+    margin-top: 0;
+    padding: 0;
+    gap: 2px;
+    justify-content: flex-start;
+    min-height: 18px;
+    line-height: 18px;
   }
   .seat-name small {
     display: none;
   }
   .seat-stack {
-    font-size: 14px;
-    min-width: 72px;
-    padding: 3px 6px;
+    grid-column: 2;
+    grid-row: 3;
+    font-size: 13px;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 0;
+    margin-top: 0;
+    line-height: 20px;
+    border: 0;
+    box-shadow: none;
+  }
+  .seat-hand-rank {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    justify-self: center;
+    font-size: 13px;
+    line-height: 18px;
+    padding: 0 4px;
+    margin-top: 2px;
+    border: 0;
+  }
+  .own-seat .seat-hand-rank,
+  .hand-rank-prefix {
+    display: none;
   }
   .dealer-button {
-    left: 2px;
-    top: 30px;
+    left: 0;
+    top: 56px;
   }
   .turn-timer {
-    right: -12px;
-    bottom: -7px;
+    left: 6px;
+    right: auto;
+    bottom: 0;
     font-size: 14px;
+  }
+  .current-turn .avatar-emoji {
+    display: none;
+  }
+  .winner-crown {
+    left: 0;
+    top: 0;
+    padding: 3px;
   }
   .empty-seat {
+    grid-column: 1 / -1;
+    grid-row: 2 / 4;
+    justify-self: center;
     width: 48px;
     height: 48px;
+    margin-top: 0;
+    box-shadow: none;
   }
-  .empty-seat span {
-    top: 56px;
-    font-size: 14px;
+  .empty-seat > span {
+    top: -3px;
+    right: -5px;
+    font-size: 12px;
     letter-spacing: 0;
+    background: #102320;
+    border-radius: 50%;
+    width: 19px;
+    height: 19px;
+  }
+  .empty-seat .seat-label-suffix {
+    display: none;
   }
   .seat-cards {
     left: 50%;
     right: auto;
-    top: -24px;
+    top: 0;
     transform: translateX(-50%);
     gap: 2px;
   }
@@ -2532,7 +2651,7 @@ input[type="range"] {
     margin: 14px 0 0 8px;
   }
   .table-seat .seat-cards.revealed-cards {
-    top: -24px;
+    top: 0;
     left: 50%;
     right: auto;
     transform: translateX(-50%);
@@ -2557,28 +2676,33 @@ input[type="range"] {
     display: none;
   }
   .seat-bet {
-    font-size: 14px;
-    padding: 3px 5px;
-    gap: 4px;
-  }
-  .seat-index-0 .seat-bet {
-    top: -30px;
-  }
-  .seat-index-1 .seat-bet,
-  .seat-index-2 .seat-bet,
-  .seat-index-3 .seat-bet {
-    top: 64px;
-    left: -18px;
-  }
-  .seat-index-4 .seat-bet,
-  .seat-index-5 .seat-bet {
-    top: 64px;
-    right: -18px;
+    position: static;
+    font-size: 12px;
+    line-height: 18px;
+    padding: 0;
+    gap: 3px;
+    margin-top: 0;
   }
   .player-badge {
-    font-size: 14px;
-    left: -10px;
-    top: 28px;
+    position: static;
+    font-size: 12px;
+    line-height: 18px;
+    padding: 0 3px;
+    border: 0;
+  }
+  .seat-action-info {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    justify-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    margin-top: 2px;
+  }
+  .seat-action-info:has(.player-badge) .chip,
+  .hand-complete .seat-action-info {
+    display: none;
   }
   .thought-bubble {
     font-size: 14px;
@@ -2685,9 +2809,6 @@ input[type="range"] {
   .auth-panel {
     padding: 20px 16px;
   }
-  .table-area {
-    height: 580px;
-  }
   .table-status-right {
     margin-left: 0;
   }
@@ -2696,7 +2817,7 @@ input[type="range"] {
   }
 }
 
-/* Compact room chrome: the table keeps its existing seat geometry. */
+/* Compact room chrome and fixed action dock. */
 .room-page {
   --dock-height: 148px;
   max-width: 1560px;

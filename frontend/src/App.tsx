@@ -78,21 +78,79 @@ const phases: Record<string, string> = {
   complete: "本手结束",
 };
 function seatPosition(index: number, count: number, mobile = false) {
-  // Nine seats need wider paired rows on narrow screens to keep names readable.
-  const portraitNine = [
-    [50, 94],
-    [94, 84],
-    [102, 54],
-    [94, 30],
-    [76, 6],
-    [24, 6],
-    [6, 30],
-    [-2, 54],
-    [6, 84],
-  ];
-  if (mobile && count === 9) {
-    const [x, y] = portraitNine[index];
-    return { x, y };
+  // Reserve an entire middle row for the board; seats keep their clockwise order.
+  const portraitRows: Record<number, number[][]> = {
+    2: [
+      [2, 3],
+      [2, 1],
+    ],
+    3: [
+      [2, 3],
+      [3, 1],
+      [1, 1],
+    ],
+    4: [
+      [2, 3],
+      [3, 1],
+      [2, 1],
+      [1, 1],
+    ],
+    5: [
+      [2, 5],
+      [3, 4],
+      [3, 2],
+      [1, 2],
+      [1, 4],
+    ],
+    6: [
+      [2, 5],
+      [3, 4],
+      [3, 2],
+      [2, 1],
+      [1, 2],
+      [1, 4],
+    ],
+    7: [
+      [2, 5],
+      [3, 4],
+      [3, 2],
+      [3, 1],
+      [1, 1],
+      [1, 2],
+      [1, 4],
+    ],
+    8: [
+      [2, 5],
+      [3, 5],
+      [3, 4],
+      [3, 2],
+      [2, 1],
+      [1, 2],
+      [1, 4],
+      [1, 5],
+    ],
+    9: [
+      [2, 5],
+      [3, 5],
+      [3, 4],
+      [3, 2],
+      [3, 1],
+      [1, 1],
+      [1, 2],
+      [1, 4],
+      [1, 5],
+    ],
+  };
+  if (mobile) {
+    const [column, row] = portraitRows[count][index];
+    const middleRow = count <= 4 ? 2 : 3;
+    const height = count <= 4 ? 424 : 636;
+    return {
+      x: ((column - 0.5) / 3) * 100,
+      y: ((106 * (row - 1) + (row > middleRow ? 106 : 0) + 52) / height) * 100,
+      row,
+      column,
+    };
   }
   const angle = (index / count) * Math.PI * 2;
   return {
@@ -1711,7 +1769,8 @@ function Room({
           <div
             className={
               "table-area " +
-              (state.settings.maxPlayers === 9 ? "nine-seats" : "")
+              (state.settings.maxPlayers <= 4 ? "short-table " : "") +
+              (hand?.phase === "complete" ? "hand-complete" : "")
             }
           >
             <div className="poker-table" ref={tableArea}>
@@ -1743,12 +1802,21 @@ function Room({
                   </div>
                   <div className="hand-caption">
                     {hand?.phase === "complete"
-                      ? hand.winners
-                          ?.map(
-                            (w) =>
-                              `${state.players.find((p) => p.id === w.id)?.name || "玩家"} +${fmt(w.amount)} · ${w.description}`,
-                          )
-                          .join(" / ")
+                      ? hand.winners?.map((w) => (
+                          <span
+                            className="hand-winner"
+                            key={w.id}
+                            title={w.description}
+                          >
+                            {state.players.find((p) => p.id === w.id)?.name ||
+                              "玩家"}{" "}
+                            +{fmt(w.amount)}
+                            <span className="winner-description">
+                              {" "}
+                              · {w.description}
+                            </span>
+                          </span>
+                        ))
                       : hand
                         ? phases[hand.phase]
                         : "入座后，由房主开始牌局"}
@@ -1793,8 +1861,8 @@ function Room({
                       {
                         "--seat-x": `${position.x}%`,
                         "--seat-y": `${position.y}%`,
-                        "--seat-mobile-x": `${portraitPosition.x}%`,
-                        "--seat-mobile-y": `${portraitPosition.y}%`,
+                        "--seat-row": portraitPosition.row,
+                        "--seat-column": portraitPosition.column,
                       } as React.CSSProperties
                     }
                   >
@@ -1854,11 +1922,14 @@ function Room({
                           )}
                         </button>
                         <div className="seat-name">
-                          {p.name}
+                          <span className="seat-player-name">{p.name}</span>
                           {p.id === user.id && <small>你</small>}
                           {p.id === state.hostId && <Crown size={11} />}
                         </div>
-                        <div className="seat-stack">
+                        <div
+                          className="seat-stack"
+                          title={`${p.name}：${fmt(p.stack)} 筹码`}
+                        >
                           {fmt(p.stack)}
                           {!p.connected && <WifiOff size={10} />}
                         </div>
@@ -1868,7 +1939,8 @@ function Room({
                             aria-label={`${p.name} 的当前牌型：${hp.currentHand}`}
                             title="根据可见底牌和当前公共牌组成的最佳五张牌型"
                           >
-                            当前：{hp.currentHand}
+                            <span className="hand-rank-prefix">当前：</span>
+                            {hp.currentHand}
                           </div>
                         )}
                         {hand?.dealerSeat === i && (
@@ -1876,15 +1948,19 @@ function Room({
                             D
                           </span>
                         )}
-                        {hp && (hp.folded || hp.allIn) && (
-                          <span className="player-badge">
-                            {hp.folded ? "弃牌" : "ALL IN"}
-                          </span>
-                        )}
-                        {hp && hp.bet > 0 && (
-                          <div className="seat-bet">
-                            <i className="chip" />
-                            {fmt(hp.bet)}
+                        {hp && (hp.folded || hp.allIn || hp.bet > 0) && (
+                          <div className="seat-action-info">
+                            {(hp.folded || hp.allIn) && (
+                              <span className="player-badge">
+                                {hp.folded ? "弃牌" : "ALL IN"}
+                              </span>
+                            )}
+                            {hp.bet > 0 && (
+                              <div className="seat-bet">
+                                <i className="chip" />
+                                {fmt(hp.bet)}
+                              </div>
+                            )}
                           </div>
                         )}
                       </>
@@ -1901,7 +1977,10 @@ function Room({
                         aria-label={`坐入 ${i + 1} 号座位`}
                       >
                         <Plus size={20} />
-                        <span>{i + 1} 号座位</span>
+                        <span>
+                          {i + 1}
+                          <span className="seat-label-suffix"> 号座位</span>
+                        </span>
                       </button>
                     )}
                   </div>
@@ -1918,6 +1997,24 @@ function Room({
                       (me && me.seat >= 0 ? me.seat : 0) +
                       state.settings.maxPlayers) %
                     state.settings.maxPlayers;
+                  const avatar = tableArea.current?.querySelector<HTMLElement>(
+                    `.seat-index-${index} .seat-avatar-button`,
+                  );
+                  const bounds = avatar?.getBoundingClientRect();
+                  const tableBounds =
+                    tableArea.current?.getBoundingClientRect();
+                  if (bounds && tableBounds) {
+                    return {
+                      x:
+                        ((bounds.left + bounds.width / 2 - tableBounds.left) /
+                          tableBounds.width) *
+                        100,
+                      y:
+                        ((bounds.top + bounds.height / 2 - tableBounds.top) /
+                          tableBounds.height) *
+                        100,
+                    };
+                  }
                   return seatPosition(
                     index,
                     state.settings.maxPlayers,
