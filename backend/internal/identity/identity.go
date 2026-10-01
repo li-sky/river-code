@@ -341,7 +341,8 @@ func gravatar(email string) string {
 	return "https://www.gravatar.com/avatar/" + hex.EncodeToString(h[:]) + "?d=identicon&s=256"
 }
 func validEmoji(v string) bool {
-	return utf8.RuneCountInString(v) <= 8 && len(v) <= 40 && !strings.ContainsAny(v, "\r\n\x00")
+	// Match the room command limit, including multi-person skin-tone sequences.
+	return utf8.RuneCountInString(v) <= 16 && len(v) <= 64 && !strings.ContainsAny(v, "\r\n\x00")
 }
 func validAvatar(v string) bool {
 	if v == "" {

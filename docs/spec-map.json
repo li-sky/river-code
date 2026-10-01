@@ -83,6 +83,7 @@
       "url": "https://github.com/li-sky/river-spec/blob/main/pages/04-shared-settings-media.sdd.md",
       "sources": [
         "frontend/src/App.tsx",
+        "frontend/src/components/EmojiPicker.tsx",
         "frontend/src/lib/api.ts",
         "frontend/src/lib/types.ts",
         "frontend/src/lib/sound.ts",
