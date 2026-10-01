@@ -20,6 +20,8 @@
 
 完整表情选择器位于 [`frontend/src/components/EmojiPicker.tsx`](../frontend/src/components/EmojiPicker.tsx)，由 App 中两个表情弹窗按需加载，归入 shared 规格。
 
+手机下注与筹码滑条触觉反馈位于 [`frontend/src/lib/haptics.ts`](../frontend/src/lib/haptics.ts)，由 App 的用户动作触发，归入 table/shared 规格；兼容性和节流边界测试见 [`haptics.test.mjs`](../frontend/src/lib/haptics.test.mjs)，通过 `npm run test:haptics` 或 [`scripts/test-media.sh`](../scripts/test-media.sh) 执行。
+
 机器可读的对应关系保存在 [spec-map.json](spec-map.json)，供代理或工具按源码路径定位规格。规格与代码分仓维护；修改行为时同步相关规格和验收证据。
 
 ## 开发步骤

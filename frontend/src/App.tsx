@@ -54,6 +54,7 @@ import type {
   WSMessage,
 } from "./lib/types";
 import { playSound, setSoundSettings, unlockAudio } from "./lib/sound";
+import { ChipSliderHaptics, playHaptic, stopHaptics } from "./lib/haptics";
 import { useVoice } from "./lib/voice";
 const defaultRoom: RoomSettings = {
   visibility: "public",
@@ -1237,6 +1238,7 @@ function Room({
       { id: number; from: string; to: string; emoji: string }[]
     >([]);
   const latestState = useRef<RoomState | null>(null),
+    sliderHaptics = useRef(new ChipSliderHaptics()),
     pendingToken = useRef(""),
     ws = useRef<WebSocket | null>(null),
     handler = useRef<(m: WSMessage) => void>(() => {}),
@@ -1451,6 +1453,19 @@ function Room({
     setRaiseOpen(false);
   }, [hand?.turnToken, connected]);
   useEffect(() => {
+    if (!raiseOpen) sliderHaptics.current.reset();
+  }, [raiseOpen]);
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") sliderHaptics.current.cancel();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      stopHaptics();
+    };
+  }, []);
+  useEffect(() => {
     if (!config.chatEnabled || state?.settings.chatEnabled === false)
       setDrawer((current) => (current === "right" ? null : current));
   }, [config.chatEnabled, state?.settings.chatEnabled]);
@@ -1631,7 +1646,10 @@ function Room({
       setInviteOpen(true);
     }
   };
-  const action = (action: string, amount?: number) => {
+  const action = (
+    action: "call" | "check" | "raise" | "fold" | "allin",
+    amount?: number,
+  ) => {
     if (
       !connected ||
       ws.current?.readyState !== WebSocket.OPEN ||
@@ -1647,6 +1665,7 @@ function Room({
       turnToken: hand.turnToken,
       ...(amount !== undefined ? { amount } : {}),
     });
+    playHaptic(action === "allin" ? "raise" : action);
   };
   const submitChat = () => {
     if (!chat.trim()) return;
@@ -2158,7 +2177,7 @@ function Room({
             )}
             <div className="bet-actions" aria-busy={submitting}>
               <Button
-                className="check-button"
+                className="call-button"
                 disabled={!myTurn || !connected || submitting || !toCall}
                 onClick={() => action("call")}
               >
@@ -2173,7 +2192,7 @@ function Room({
                 </span>
               </Button>
               <Button
-                className="primary"
+                className="primary raise-button"
                 disabled={
                   !myTurn ||
                   !connected ||
@@ -2183,6 +2202,7 @@ function Room({
                 }
                 onClick={() => {
                   setRaise(Math.min(maxRaise, minRaise));
+                  playHaptic("raise");
                   setRaiseOpen(true);
                 }}
               >
@@ -2554,14 +2574,34 @@ function Room({
               max={maxRaise}
               step={1}
               value={raise}
-              onChange={(e) => setRaise(Number(e.target.value))}
+              onPointerDown={(e) =>
+                sliderHaptics.current.begin(
+                  Number(e.currentTarget.value),
+                  Math.min(minRaise, maxRaise),
+                  maxRaise,
+                )
+              }
+              onPointerUp={() => sliderHaptics.current.reset()}
+              onPointerCancel={() => sliderHaptics.current.cancel()}
+              onLostPointerCapture={() => sliderHaptics.current.cancel()}
+              onBlur={() => sliderHaptics.current.reset()}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                setRaise(value);
+                sliderHaptics.current.update(
+                  value,
+                  Math.min(minRaise, maxRaise),
+                  maxRaise,
+                );
+              }}
             />
             <div className="raise-presets">
               {[0.25, 0.5, 0.75].map((fraction) => (
                 <button
                   key={fraction}
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    playHaptic("chip");
                     setRaise(
                       Math.min(
                         maxRaise,
@@ -2571,13 +2611,19 @@ function Room({
                             Math.round((hand?.pot || 0) * fraction),
                         ),
                       ),
-                    )
-                  }
+                    );
+                  }}
                 >
                   {fraction * 100}%
                 </button>
               ))}
-              <button type="button" onClick={() => setRaise(maxRaise)}>
+              <button
+                type="button"
+                onClick={() => {
+                  setRaise(maxRaise);
+                  playHaptic("chip");
+                }}
+              >
                 All-in
               </button>
             </div>
@@ -2587,7 +2633,7 @@ function Room({
             </p>
           </fieldset>
           <Button
-            className="primary full"
+            className="primary raise-button full"
             type="submit"
             disabled={
               !myHand?.canRaise ||

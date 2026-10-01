@@ -87,6 +87,8 @@
         "frontend/src/lib/api.ts",
         "frontend/src/lib/types.ts",
         "frontend/src/lib/sound.ts",
+        "frontend/src/lib/haptics.ts",
+        "frontend/src/lib/haptics.test.mjs",
         "frontend/src/lib/voice.ts",
         "frontend/src/style.css",
         "frontend/src/components/ChatBubble.tsx",
