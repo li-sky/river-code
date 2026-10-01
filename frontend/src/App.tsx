@@ -12,7 +12,6 @@ import * as Switch from "@radix-ui/react-switch";
 import {
   ArrowLeft,
   ArrowRight,
-  AlertCircle,
   Check,
   Clock3,
   CircleHelp,
@@ -22,12 +21,16 @@ import {
   LogOut,
   LoaderCircle,
   MessageCircle,
+  Menu,
   Mic,
   MicOff,
   Pin,
   PinOff,
   Plus,
+  Pause,
+  Play,
   Send,
+  Share2,
   Settings,
   ShieldCheck,
   SlidersHorizontal,
@@ -106,9 +109,19 @@ function EmojiChoices({
   onSelect: (emoji: string) => void;
 }) {
   if (disabledReason)
-    return <p className="muted" role="status">{disabledReason}</p>;
+    return (
+      <p className="muted" role="status">
+        {disabledReason}
+      </p>
+    );
   return (
-    <Suspense fallback={<p className="muted" role="status">正在加载表情…</p>}>
+    <Suspense
+      fallback={
+        <p className="muted" role="status">
+          正在加载表情…
+        </p>
+      }
+    >
       <EmojiPicker onSelect={onSelect} />
     </Suspense>
   );
@@ -179,6 +192,63 @@ function Modal({
             </div>
             <Dialog.Close className="icon-button" aria-label="关闭">
               <X size={20} />
+            </Dialog.Close>
+          </div>
+          {children}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+function Drawer({
+  open,
+  onOpenChange,
+  side,
+  title,
+  id,
+  children,
+  onSwipe,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  side: "left" | "right";
+  title: string;
+  id: string;
+  children: ReactNode;
+  onSwipe: {
+    onTouchStart: (e: React.TouchEvent) => void;
+    onTouchEnd: (e: React.TouchEvent) => void;
+  };
+}) {
+  const opener = useRef<HTMLElement | null>(null);
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="drawer-overlay" />
+        <Dialog.Content
+          id={id}
+          className={`table-drawer drawer-${side} ${side === "right" ? "chat-panel" : ""}`}
+          {...onSwipe}
+          onOpenAutoFocus={() => {
+            opener.current = document.activeElement as HTMLElement;
+          }}
+          onCloseAutoFocus={(e) => {
+            if (opener.current?.isConnected) {
+              e.preventDefault();
+              opener.current.focus();
+            }
+          }}
+        >
+          <div className="chat-heading">
+            <Dialog.Title>{title}</Dialog.Title>
+            <Dialog.Description className="sr-only">
+              {side === "right" ? "查看和发送牌桌消息" : "房间管理与媒体工具"}
+            </Dialog.Description>
+            <Dialog.Close
+              className="icon-button"
+              aria-label={side === "right" ? "关闭聊天" : "关闭牌桌菜单"}
+            >
+              <X size={19} />
             </Dialog.Close>
           </div>
           {children}
@@ -498,51 +568,53 @@ export default function App() {
         void unlockAudio();
       }}
     >
-      <header className="topbar">
-        <a
-          className="brand"
-          href="/"
-          onClick={(e) => {
-            e.preventDefault();
-            goRoom("");
-          }}
-        >
-          <span className="brand-mark">
-            <Spade size={23} fill="currentColor" />
-          </span>
-          <span>
-            RIVER<small>POKER WITH FRIENDS</small>
-          </span>
-        </a>
-        <div className="header-right">
-          <span className="environment">
-            <span className="live-dot" />
-            私享德州
-          </span>
-          {user ? (
-            <>
-              <button
-                className="profile-trigger"
-                aria-label={`${user.name} 的个人设置`}
-                onClick={() => setProfile(true)}
-              >
-                <Avatar name={user.name} url={user.avatarUrl} />
-                <span>{user.name}</span>
-                <Settings size={16} />
-              </button>
-              <button
-                className="icon-button logout"
-                onClick={logout}
-                aria-label="退出登录"
-              >
-                <LogOut size={18} />
-              </button>
-            </>
-          ) : (
-            <span className="header-label">朋友相聚，好牌开场。</span>
-          )}
-        </div>
-      </header>
+      {!(user && roomId) && (
+        <header className="topbar">
+          <a
+            className="brand"
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              goRoom("");
+            }}
+          >
+            <span className="brand-mark">
+              <Spade size={23} fill="currentColor" />
+            </span>
+            <span>
+              RIVER<small>POKER WITH FRIENDS</small>
+            </span>
+          </a>
+          <div className="header-right">
+            <span className="environment">
+              <span className="live-dot" />
+              私享德州
+            </span>
+            {user ? (
+              <>
+                <button
+                  className="profile-trigger"
+                  aria-label={`${user.name} 的个人设置`}
+                  onClick={() => setProfile(true)}
+                >
+                  <Avatar name={user.name} url={user.avatarUrl} />
+                  <span>{user.name}</span>
+                  <Settings size={16} />
+                </button>
+                <button
+                  className="icon-button logout"
+                  onClick={logout}
+                  aria-label="退出登录"
+                >
+                  <LogOut size={18} />
+                </button>
+              </>
+            ) : (
+              <span className="header-label">朋友相聚，好牌开场。</span>
+            )}
+          </div>
+        </header>
+      )}
       {error && (
         <div role="alert" className="toast">
           <span>{error}</span>
@@ -750,6 +822,7 @@ export default function App() {
           onBack={() => goRoom("")}
           onError={report}
           onUser={setUser}
+          onProfile={() => setProfile(true)}
         />
       ) : (
         <main className="lobby">
@@ -1073,6 +1146,7 @@ function Room({
   onBack,
   onError,
   onUser,
+  onProfile,
 }: {
   roomId: string;
   user: User;
@@ -1080,11 +1154,14 @@ function Room({
   onBack: () => void;
   onError: (e: unknown) => void;
   onUser: (u: User) => void;
+  onProfile: () => void;
 }) {
   const [state, setState] = useState<RoomState | null>(null),
     [connected, setConnected] = useState(false),
     [fatal, setFatal] = useState(false),
     [chatOpen, setChatOpen] = useState(false),
+    [menuOpen, setMenuOpen] = useState(false),
+    [raiseOpen, setRaiseOpen] = useState(false),
     [settingsOpen, setSettingsOpen] = useState(false),
     [rulesOpen, setRulesOpen] = useState(false),
     [inviteOpen, setInviteOpen] = useState(false),
@@ -1110,6 +1187,9 @@ function Room({
     handler = useRef<(m: WSMessage) => void>(() => {}),
     chatEnd = useRef<HTMLDivElement>(null),
     tableArea = useRef<HTMLDivElement>(null),
+    roomPage = useRef<HTMLElement>(null),
+    actionDock = useRef<HTMLElement>(null),
+    swipeStart = useRef<{ x: number; y: number } | null>(null),
     bubbleTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const send = useCallback(
     (message: Record<string, unknown>) => {
@@ -1271,12 +1351,67 @@ function Room({
     seconds = hand
       ? Math.min(
           state?.settings.actionSeconds || 120,
-          Math.max(0, Math.ceil((new Date(hand.deadline).getTime() - now) / 1000)),
+          Math.max(
+            0,
+            Math.ceil((new Date(hand.deadline).getTime() - now) / 1000),
+          ),
         )
       : 0;
   useEffect(() => {
     setRaise(Math.min(maxRaise, minRaise));
   }, [minRaise, maxRaise, hand?.phase]);
+  useEffect(() => {
+    setRaiseOpen(false);
+  }, [hand?.turnToken, connected]);
+  useEffect(() => {
+    if (!actionDock.current) return;
+    const observer = new ResizeObserver(([entry]) => {
+      roomPage.current?.style.setProperty(
+        "--dock-height",
+        `${entry.target.getBoundingClientRect().height}px`,
+      );
+    });
+    observer.observe(actionDock.current);
+    return () => observer.disconnect();
+  }, [state?.id]);
+  const swipe = (side: "left" | "right" | "table") => ({
+    onTouchStart: (e: React.TouchEvent) => {
+      if (side !== "table") e.stopPropagation();
+      const target = e.target as HTMLElement;
+      if (
+        target.closest("input, button, select, a") ||
+        e.touches.length !== 1
+      ) {
+        swipeStart.current = null;
+        return;
+      }
+      swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    },
+    onTouchEnd: (e: React.TouchEvent) => {
+      if (side !== "table") e.stopPropagation();
+      const start = swipeStart.current;
+      swipeStart.current = null;
+      if (!start || !e.changedTouches.length) return;
+      const dx = e.changedTouches[0].clientX - start.x;
+      const dy = e.changedTouches[0].clientY - start.y;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (side === "left" && dx < 0) setMenuOpen(false);
+      else if (side === "right" && dx > 0) setChatOpen(false);
+      else if (side === "table") {
+        if (start.x < 32 && dx > 0) setMenuOpen(true);
+        if (
+          start.x > window.innerWidth - 32 &&
+          dx < 0 &&
+          config.chatEnabled &&
+          state?.settings.chatEnabled
+        )
+          setChatOpen(true);
+      }
+    },
+    onTouchCancel: () => {
+      swipeStart.current = null;
+    },
+  });
   if (!state)
     return (
       <main className="room-loading">
@@ -1351,69 +1486,90 @@ function Room({
     }
   };
   return (
-    <main className="room-page">
-      <div className="room-toolbar">
-        <div className="room-title">
-          <button className="icon-button" onClick={leave} aria-label="返回大厅">
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1>
-              {state.name}
-              {isHost && (
-                <span className="host-label">
-                  <Crown size={12} /> HOST
-                </span>
-              )}
-            </h1>
-            <div className="room-subtitle">
-              <span>NL HOLD’EM</span>
-              <span>
-                {state.settings.visibility === "private"
-                  ? "私人房间"
-                  : "公开房间"}
-              </span>
-              <span>
-                盲注 {fmt(state.settings.smallBlind)} /{" "}
-                {fmt(state.settings.bigBlind)}
-              </span>
-              <span className={connected ? "connection" : "connection offline"}>
-                {connected ? <Wifi size={12} /> : <WifiOff size={12} />}{" "}
-                {connected ? "已连接" : "重新连接中"}
-              </span>
-            </div>
+    <main className="room-page" ref={roomPage}>
+      <header className="room-topbar">
+        <button
+          className="icon-button"
+          aria-label="打开牌桌菜单"
+          aria-expanded={menuOpen}
+          aria-controls="table-menu"
+          onClick={() => setMenuOpen(true)}
+        >
+          <Menu size={21} />
+        </button>
+        <div className="room-heading">
+          <h1 title={state.name}>{state.name}</h1>
+          <span>
+            盲注 {fmt(state.settings.smallBlind)}/{fmt(state.settings.bigBlind)}
+          </span>
+          <div className="room-connection">
+            <span className={connected ? "connection" : "connection offline"}>
+              {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
+              {connected ? "连接正常" : "重新连接中"}
+            </span>
+            <span>
+              /{state.settings.visibility === "private" ? "私人" : "公开"}
+            </span>
           </div>
         </div>
-        <div className="toolbar-actions">
-          <Button
-            className="secondary invite-button"
-            onClick={() => void copy()}
+        <div className="room-topbar-actions">
+          <button
+            className="room-profile icon-button"
+            onClick={onProfile}
+            aria-label={`${user.name} 的个人设置`}
+            title={user.name}
           >
-            {copied ? <Check size={15} /> : <Users size={15} />}
-            <span>{copied ? "链接已复制" : "邀请朋友"}</span>
-          </Button>
+            <Avatar name={user.name} url={user.avatarUrl} />
+          </button>
+          <button
+            className="icon-button"
+            onClick={() => void copy()}
+            aria-label={copied ? "链接已复制" : "分享链接"}
+            title={copied ? "链接已复制" : "分享链接"}
+          >
+            {copied ? <Check size={18} /> : <Share2 size={18} />}
+          </button>
+          <button
+            className="icon-button"
+            disabled={!connected || !me || me.seat < 0}
+            onClick={() =>
+              send({ type: "sitout", sittingOut: !me?.sittingOut })
+            }
+            aria-label={me?.sittingOut ? "返回牌局" : "暂离"}
+            title={
+              active
+                ? "暂离从下一手生效，本手仍需行动"
+                : me?.sittingOut
+                  ? "返回牌局"
+                  : "暂离（保留座位）"
+            }
+          >
+            {me?.sittingOut ? <Play size={18} /> : <Pause size={18} />}
+          </button>
+          <button
+            className="icon-button"
+            onClick={leave}
+            aria-label="退出房间"
+            title="退出房间"
+          >
+            <LogOut size={18} />
+          </button>
           <button
             className="icon-button"
             onClick={() => setRulesOpen(true)}
-            aria-label="玩法说明"
+            aria-label="玩法简介"
+            title="玩法简介"
           >
-            <CircleHelp size={19} />
+            <CircleHelp size={18} />
           </button>
-          {isHost && (
-            <button
-              className="icon-button"
-              onClick={() => {
-                setEditedSettings(state.settings);
-                setSettingsOpen(true);
-              }}
-              aria-label="房间设置"
-            >
-              <SlidersHorizontal size={19} />
-            </button>
-          )}
         </div>
-      </div>
-      <div className={"game-layout " + (chatOpen ? "with-chat" : "")}>
+      </header>
+      {copied && (
+        <span className="room-copy-status" role="status">
+          链接已复制
+        </span>
+      )}
+      <div className="game-layout" {...swipe("table")}>
         <section className="game-main">
           <div className="table-status">
             <span className="live-dot" />
@@ -1438,7 +1594,8 @@ function Room({
           </div>
           <div
             className={
-              "table-area " + (state.settings.maxPlayers === 9 ? "nine-seats" : "")
+              "table-area " +
+              (state.settings.maxPlayers === 9 ? "nine-seats" : "")
             }
           >
             <div className="poker-table" ref={tableArea}>
@@ -1672,274 +1829,353 @@ function Room({
               })}
             </div>
           </div>
-          <div className={"under-table " + (hand?.players.some(p => p.currentHand) ? "has-hand-rank" : "")}>
-            <div className="under-table-left">
-              <span>
-                <ShieldCheck size={14} /> 服务器公正发牌
-              </span>
-              <span>无限注 · 现金桌</span>
-            </div>
-            <span>娱乐筹码，无现金价值</span>
-          </div>
-          <section className={"action-dock " + (myTurn ? "your-turn" : "")}>
-            <div className="action-summary">
-              {myHand?.cards.length === 2 && (
-                <div className="mobile-hole-cards">
-                  <span>你的底牌</span>
-                  {myHand.currentHand && (
-                    <span className="mobile-hand-rank">
-                      当前：{myHand.currentHand}
-                    </span>
-                  )}
-                  <div>
-                    {myHand.cards.map((c, i) => (
-                      <Card
-                        key={`${hand?.number}-${c}`}
-                        code={c}
-                        small
-                        index={i}
-                      />
-                    ))}
-                  </div>
+          <section
+            ref={actionDock}
+            className={"action-dock " + (myTurn ? "your-turn" : "")}
+            aria-label="牌局操作"
+          >
+            <div className="dock-status-row">
+              {myHand?.cards.length === 2 && !myHand.folded && (
+                <div className="dock-hole-cards" aria-label="你的底牌">
+                  {myHand.cards.map((c, i) => (
+                    <Card
+                      key={`${hand?.number}-${c}`}
+                      code={c}
+                      small
+                      index={i}
+                    />
+                  ))}
                 </div>
               )}
-              <div className="action-heading">
-                <span className="eyebrow">
-                  {myTurn
-                    ? "轮到你行动"
-                    : me && me.seat >= 0
-                      ? "已入座"
-                      : "正在旁观"}
+              <div className="dock-status-copy" role="status">
+                <strong>
+                  {submitting
+                    ? "已发送，等待更新…"
+                    : myTurn
+                      ? toCall
+                        ? `需跟注 ${fmt(Math.min(toCall, me?.stack || 0))}`
+                        : "轮到你 · 可以过牌"
+                      : active
+                        ? hpStatus(myHand, hand?.turnSeat === me?.seat)
+                        : me?.sittingOut
+                          ? "已暂离 · 保留座位"
+                          : me && me.seat >= 0
+                            ? isHost
+                              ? "等待开局"
+                              : "等待房主开局"
+                            : "选择空座位入座"}
+                </strong>
+                <span>
+                  {me && me.seat >= 0
+                    ? `筹码 ${fmt(me.stack)}`
+                    : `${state.settings.maxPlayers - seated.length} 个空位`}
+                  {myHand?.currentHand ? ` · ${myHand.currentHand}` : ""}
+                  {active && me?.sittingOut ? " · 下手暂离" : ""}
                 </span>
-                <h3>
-                  {myTurn
-                    ? `轮到你了${toCall ? ` · 跟注 ${fmt(Math.min(toCall, me?.stack || 0))}` : " · 可以过牌"}`
-                    : active
-                      ? hpStatus(myHand, hand?.turnSeat === me?.seat)
-                      : me && me.seat >= 0
-                        ? "准备好下一手？"
-                        : "选一个座位，加入牌局"}
-                </h3>
               </div>
-              <div className="dock-meta">
-                {me && me.seat >= 0 ? (
-                  <>
-                    <span>
-                      你的筹码 <strong>{fmt(me.stack)}</strong>
-                    </span>
-                    <Button
-                      className="text-button"
-                      disabled={active || !connected}
-                      onClick={() => send({ type: "stand" })}
-                    >
-                      离座
-                    </Button>
-                  </>
-                ) : (
-                  <span>
-                    {state.settings.maxPlayers - seated.length} 个空位
-                  </span>
-                )}
-              </div>
+              {myTurn ? (
+                <div
+                  className={"dock-countdown " + (seconds <= 5 ? "urgent" : "")}
+                  aria-label={`行动剩余 ${seconds} 秒`}
+                >
+                  <Clock3 size={15} />
+                  <strong>{seconds}s</strong>
+                </div>
+              ) : isHost && !active ? (
+                <Button
+                  className="primary dock-start"
+                  disabled={
+                    !connected ||
+                    seated.filter(
+                      (p) => p.stack > 0 && p.connected && !p.sittingOut,
+                    ).length < 2
+                  }
+                  onClick={() => send({ type: "start" })}
+                >
+                  {hand ? "开始下一手" : "开始牌局"}
+                </Button>
+              ) : null}
+              {allowedChat && (
+                <button
+                  className="icon-button dock-chat"
+                  aria-label="牌桌聊天"
+                  aria-expanded={chatOpen}
+                  aria-controls="table-chat"
+                  onClick={() => setChatOpen(true)}
+                >
+                  <MessageCircle size={21} />
+                </button>
+              )}
             </div>
             {myTurn && (
-              <div className={"action-clock " + (seconds <= 5 ? "urgent" : "")}>
-                <span>
-                  {seconds <= 5 ? (
-                    <AlertCircle size={16} />
-                  ) : (
-                    <Clock3 size={16} />
-                  )}
-                  {seconds <= 5 ? "即将超时" : "行动剩余时间"}
-                </span>
-                <div
-                  className="action-clock-track"
-                  role="progressbar"
-                  aria-label="行动剩余时间"
-                  aria-valuemin={0}
-                  aria-valuemax={state.settings.actionSeconds}
-                  aria-valuenow={Math.min(
-                    seconds,
-                    state.settings.actionSeconds,
-                  )}
-                  aria-valuetext={`${seconds} 秒`}
-                >
-                  <i
-                    style={{
-                      width: `${Math.min(100, (seconds / state.settings.actionSeconds) * 100)}%`,
-                    }}
-                  />
-                </div>
-                <strong>
-                  {seconds}
-                  <small> 秒</small>
-                </strong>
+              <div
+                className={"dock-time-track " + (seconds <= 5 ? "urgent" : "")}
+                role="progressbar"
+                aria-label="行动剩余时间"
+                aria-valuemin={0}
+                aria-valuemax={state.settings.actionSeconds}
+                aria-valuenow={seconds}
+              >
+                <i
+                  style={{
+                    width: `${(seconds / state.settings.actionSeconds) * 100}%`,
+                  }}
+                />
               </div>
             )}
-            {myTurn ? (
-              <div className="bet-controls" aria-busy={submitting}>
-                {myHand?.canRaise && maxRaise >= minRaise && (
-                  <fieldset
-                    className="raise-controls"
-                    disabled={!connected || submitting}
-                  >
-                    <legend>加注到的本轮总额</legend>
-                    <div className="raise-presets">
-                      {[2, 3, 4].map((n) => (
-                        <button
-                          key={n}
-                          onClick={() =>
-                            setRaise(
-                              Math.min(
-                                maxRaise,
-                                Math.max(
-                                  minRaise,
-                                  (hand?.currentBet || 0) +
-                                    state.settings.bigBlind * n,
-                                ),
-                              ),
-                            )
-                          }
-                        >
-                          {n}× BB
-                        </button>
-                      ))}
-                      <button
-                        onClick={() =>
-                          setRaise(
-                            Math.min(
-                              maxRaise,
-                              Math.max(
-                                minRaise,
-                                Math.round(
-                                  (hand?.currentBet || 0) +
-                                    (hand?.pot || 0) / 2,
-                                ),
-                              ),
-                            ),
-                          )
-                        }
-                      >
-                        ½ 底池
-                      </button>
-                    </div>
-                    <input
-                      aria-label="加注筹码滑块"
-                      type="range"
-                      min={minRaise}
-                      max={maxRaise}
-                      step={1}
-                      value={raise}
-                      onChange={(e) => setRaise(Number(e.target.value))}
-                    />
-                    <label className="raise-amount">
-                      <span>加注至</span>
-                      <input
-                        className="raise-input"
-                        aria-label="加注到的总金额"
-                        type="number"
-                        inputMode="numeric"
-                        step={1}
-                        min={minRaise}
-                        max={maxRaise}
-                        value={raise}
-                        onChange={(e) => setRaise(Number(e.target.value))}
-                      />
-                    </label>
-                    <p className="raise-hint">
-                      本轮累计下注 · 最低 {fmt(minRaise)} · 最高 {fmt(maxRaise)}
-                    </p>
-                  </fieldset>
-                )}
-                <div className="bet-actions">
-                  <Button
-                    className="fold-button"
-                    disabled={!connected || submitting}
-                    onClick={() => action("fold")}
-                  >
-                    弃牌
-                  </Button>
-                  <Button
-                    className="check-button"
-                    disabled={!connected || submitting}
-                    onClick={() => action(toCall ? "call" : "check")}
-                  >
-                    {toCall
-                      ? `跟注 ${fmt(Math.min(toCall, me?.stack || 0))}`
-                      : "过牌"}
-                  </Button>
-                  <Button
-                    className="primary"
-                    disabled={
-                      !connected ||
-                      submitting ||
-                      !myHand?.canRaise ||
-                      maxRaise <= hand!.currentBet ||
-                      raise < minRaise ||
-                      raise > maxRaise ||
-                      !Number.isInteger(raise)
+            <div className="bet-actions" aria-busy={submitting}>
+              <Button
+                className="check-button"
+                disabled={!myTurn || !connected || submitting || !toCall}
+                onClick={() => action("call")}
+              >
+                <span>
+                  Call
+                  <small>
+                    跟注
+                    {myTurn && toCall
+                      ? ` ${fmt(Math.min(toCall, me?.stack || 0))}`
+                      : ""}
+                  </small>
+                </span>
+              </Button>
+              <Button
+                className="primary"
+                disabled={
+                  !myTurn ||
+                  !connected ||
+                  submitting ||
+                  !myHand?.canRaise ||
+                  maxRaise <= (hand?.currentBet || 0)
+                }
+                onClick={() => {
+                  setRaise(Math.min(maxRaise, minRaise));
+                  setRaiseOpen(true);
+                }}
+              >
+                <span>
+                  Raise<small>加注</small>
+                </span>
+              </Button>
+              <Button
+                className="check-button"
+                disabled={!myTurn || !connected || submitting || toCall > 0}
+                onClick={() => action("check")}
+              >
+                <span>
+                  Check<small>过牌</small>
+                </span>
+              </Button>
+              <Button
+                className="fold-button"
+                disabled={!myTurn || !connected || submitting}
+                onClick={() => action("fold")}
+              >
+                <span>
+                  Fold<small>弃牌</small>
+                </span>
+              </Button>
+            </div>
+          </section>
+        </section>
+        {allowedChat && (
+          <Drawer
+            open={chatOpen}
+            onOpenChange={setChatOpen}
+            side="right"
+            title="牌桌聊天"
+            id="table-chat"
+            onSwipe={swipe("right")}
+          >
+            {pinnedMessage && (
+              <section className="pinned-message" aria-label="置顶消息">
+                <div className="pinned-message-heading">
+                  <span>
+                    <Pin size={14} /> 置顶消息
+                  </span>
+                  {isHost && (
+                    <button
+                      type="button"
+                      className="chat-pin-button"
+                      disabled={!connected}
+                      aria-label="取消置顶消息"
+                      onClick={() =>
+                        send({
+                          type: "unpin_message",
+                          messageId: pinnedMessage.id,
+                        })
+                      }
+                    >
+                      <PinOff size={14} />
+                      取消置顶
+                    </button>
+                  )}
+                </div>
+                <div className="pinned-message-content">
+                  <div className="pinned-message-author">
+                    <span>{pinnedMessage.name}</span>
+                    <time dateTime={pinnedMessage.at}>
+                      {new Date(pinnedMessage.at).toLocaleTimeString("zh-CN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
+                  </div>
+                  <p>{pinnedMessage.text}</p>
+                </div>
+              </section>
+            )}
+            <div className="chat-messages">
+              {state.messages.length ? (
+                state.messages.map((m) => (
+                  <div
+                    className={
+                      "chat-message " +
+                      (m.userId === user.id ? "own-message" : "")
                     }
-                    onClick={() => action("raise", raise)}
-                  >
-                    加注至 {fmt(raise)}
-                  </Button>
-                  <Button
-                    className="allin-button"
-                    disabled={
-                      !connected ||
-                      submitting ||
-                      !me?.stack ||
-                      (maxRaise > hand!.currentBet && !myHand?.canRaise)
-                    }
-                    onClick={() => action("allin")}
+                    key={m.id}
                   >
                     <span>
-                      ALL IN<small>全下 {fmt(me?.stack || 0)}</small>
+                      {m.name}
+                      <time>
+                        {new Date(m.at).toLocaleTimeString("zh-CN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </time>
                     </span>
-                  </Button>
+                    <p>{m.text}</p>
+                    {isHost && (
+                      <button
+                        type="button"
+                        className="chat-pin-button"
+                        disabled={!connected}
+                        aria-label={
+                          pinnedMessage?.id === m.id
+                            ? "取消置顶此消息"
+                            : "置顶此消息"
+                        }
+                        onClick={() =>
+                          send({
+                            type:
+                              pinnedMessage?.id === m.id
+                                ? "unpin_message"
+                                : "pin_message",
+                            messageId: m.id,
+                          })
+                        }
+                      >
+                        {pinnedMessage?.id === m.id ? (
+                          <PinOff size={13} />
+                        ) : (
+                          <Pin size={13} />
+                        )}
+                        {pinnedMessage?.id === m.id ? "取消置顶" : "置顶"}
+                      </button>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="empty-chat">
+                  <MessageCircle size={30} />
+                  <p>一声招呼，牌局更有温度。</p>
+                  <span>消息也会在头像气泡中出现</span>
                 </div>
-                {submitting && (
-                  <p className="action-feedback" role="status">
-                    <LoaderCircle size={16} /> 已发送，等待牌桌更新…
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="waiting-actions">
-                {isHost && !active && (
-                  <Button
-                    className="primary"
-                    disabled={
-                      seated.filter((p) => p.stack > 0 && !p.sittingOut)
-                        .length < 2 || !connected
-                    }
-                    onClick={() => send({ type: "start" })}
-                  >
-                    <Spade size={16} />
-                    {hand ? "开始下一手" : "开始牌局"}
-                  </Button>
-                )}
-                <span className="muted">
-                  {!active && seated.length < 2
-                    ? "至少需要 2 位玩家入座"
-                    : !active && !isHost
-                      ? "等待房主开始牌局"
-                      : active
-                        ? "每一手好牌，都值得耐心。"
-                        : "盲注与筹码可在两手之间调整。"}
-                </span>
-                {me && me.seat >= 0 && allowedReactions && (
-                  <button
-                    className="icon-button"
-                    onClick={() => setSelfEmoji(true)}
-                    aria-label="设置头像表情"
-                  >
-                    <Smile size={20} />
-                  </button>
-                )}
-              </div>
+              )}
+              <div ref={chatEnd} />
+            </div>
+            <form
+              className="chat-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitChat();
+              }}
+            >
+              <input
+                placeholder="和朋友说点什么…"
+                aria-label="聊天消息"
+                value={chat}
+                onChange={(e) => setChat(e.target.value)}
+                maxLength={300}
+              />
+              <button
+                disabled={!chat.trim() || !connected}
+                aria-label="发送消息"
+              >
+                <Send size={17} />
+              </button>
+            </form>
+            <span className="chat-hint">Enter 发送 · 文明交流</span>
+          </Drawer>
+        )}
+      </div>
+      <Drawer
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+        side="left"
+        title="牌桌菜单"
+        id="table-menu"
+        onSwipe={swipe("left")}
+      >
+        <div className="table-menu-body">
+          <div className="menu-room-info">
+            <Spade size={20} />
+            <strong>{state.name}</strong>
+            {isHost && (
+              <span className="host-label">
+                <Crown size={14} /> 房主
+              </span>
             )}
-          </section>
+          </div>
+          <button
+            className="menu-item"
+            onClick={() => {
+              setMenuOpen(false);
+              onProfile();
+            }}
+          >
+            <Settings size={18} />
+            个人设置
+          </button>
+          {isHost && (
+            <button
+              className="menu-item"
+              onClick={() => {
+                setMenuOpen(false);
+                setEditedSettings(state.settings);
+                setSettingsOpen(true);
+              }}
+            >
+              <SlidersHorizontal size={18} />
+              房间设置
+            </button>
+          )}
+          {me && me.seat >= 0 && (
+            <button
+              className="menu-item"
+              disabled={active || !connected}
+              onClick={() => {
+                send({ type: "stand" });
+                setMenuOpen(false);
+              }}
+            >
+              <Users size={18} />
+              离座{active && <small>本手结束后可用</small>}
+            </button>
+          )}
+          {me && me.seat >= 0 && allowedReactions && (
+            <button
+              className="menu-item"
+              onClick={() => {
+                setMenuOpen(false);
+                setSelfEmoji(true);
+              }}
+            >
+              <Smile size={18} />
+              设置头像表情
+            </button>
+          )}
+          <h4>语音与音效</h4>
           <div className="social-bar">
             <div className="voice-controls">
               {config.voiceEnabled && state.settings.voiceEnabled ? (
@@ -2067,21 +2303,6 @@ function Room({
                   <VolumeX size={18} />
                 )}
               </button>
-              {allowedChat && (
-                <button
-                  className={"chat-toggle " + (chatOpen ? "active" : "")}
-                  aria-label="牌桌聊天"
-                  aria-expanded={chatOpen}
-                  aria-controls="table-chat"
-                  onClick={() => setChatOpen(!chatOpen)}
-                >
-                  <MessageCircle size={17} />
-                  <span>牌桌聊天</span>
-                  {state.messages.length > 0 && (
-                    <b>{Math.min(99, state.messages.length)}</b>
-                  )}
-                </button>
-              )}
             </div>
           </div>
           {voice.error && (
@@ -2092,128 +2313,110 @@ function Room({
               </button>
             </div>
           )}
-        </section>
-        {chatOpen && allowedChat && (
-          <aside className="chat-panel" id="table-chat" aria-label="牌桌聊天">
-            <div className="chat-heading">
-              <h3>
-                <MessageCircle size={17} />
-                牌桌聊天
-              </h3>
-              <button
-                className="icon-button"
-                onClick={() => setChatOpen(false)}
-                aria-label="关闭聊天"
-              >
-                <X size={17} />
-              </button>
-            </div>
-            {pinnedMessage && (
-              <section className="pinned-message" aria-label="置顶消息">
-                <div className="pinned-message-heading">
-                  <span>
-                    <Pin size={14} /> 置顶消息
-                  </span>
-                  {isHost && (
-                    <button
-                      type="button"
-                      className="chat-pin-button"
-                      disabled={!connected}
-                      aria-label="取消置顶消息"
-                      onClick={() => send({
-                        type: "unpin_message",
-                        messageId: pinnedMessage.id,
-                      })}
-                    >
-                      <PinOff size={14} />取消置顶
-                    </button>
-                  )}
-                </div>
-                <div className="pinned-message-content">
-                  <div className="pinned-message-author">
-                    <span>{pinnedMessage.name}</span>
-                    <time dateTime={pinnedMessage.at}>
-                      {new Date(pinnedMessage.at).toLocaleTimeString("zh-CN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </time>
-                  </div>
-                  <p>{pinnedMessage.text}</p>
-                </div>
-              </section>
-            )}
-            <div className="chat-messages">
-              {state.messages.length ? (
-                state.messages.map((m) => (
-                  <div
-                    className={
-                      "chat-message " +
-                      (m.userId === user.id ? "own-message" : "")
-                    }
-                    key={m.id}
-                  >
-                    <span>
-                      {m.name}
-                      <time>
-                        {new Date(m.at).toLocaleTimeString("zh-CN", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </time>
-                    </span>
-                    <p>{m.text}</p>
-                    {isHost && (
-                      <button
-                        type="button"
-                        className="chat-pin-button"
-                        disabled={!connected}
-                        aria-label={pinnedMessage?.id === m.id ? "取消置顶此消息" : "置顶此消息"}
-                        onClick={() => send({
-                          type: pinnedMessage?.id === m.id ? "unpin_message" : "pin_message",
-                          messageId: m.id,
-                        })}
-                      >
-                        {pinnedMessage?.id === m.id ? <PinOff size={13} /> : <Pin size={13} />}
-                        {pinnedMessage?.id === m.id ? "取消置顶" : "置顶"}
-                      </button>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="empty-chat">
-                  <MessageCircle size={30} />
-                  <p>一声招呼，牌局更有温度。</p>
-                  <span>消息也会在头像气泡中出现</span>
-                </div>
-              )}
-              <div ref={chatEnd} />
-            </div>
-            <form
-              className="chat-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                submitChat();
-              }}
-            >
+        </div>
+      </Drawer>
+      <Modal
+        open={raiseOpen && myTurn && connected}
+        onOpenChange={setRaiseOpen}
+        title="加注"
+        description="选择本轮累计下注金额；百分比按底池计算。"
+        restoreFocus
+      >
+        <form
+          className="raise-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (
+              !Number.isInteger(raise) ||
+              raise < Math.min(minRaise, maxRaise) ||
+              raise > maxRaise ||
+              !myHand?.canRaise ||
+              submitting
+            )
+              return;
+            action(
+              raise === maxRaise ? "allin" : "raise",
+              raise === maxRaise ? undefined : raise,
+            );
+            setRaiseOpen(false);
+          }}
+        >
+          <fieldset
+            className="raise-controls"
+            disabled={!connected || submitting}
+          >
+            <legend className="sr-only">加注金额</legend>
+            <label className="raise-amount">
+              <span>加注至</span>
               <input
-                placeholder="和朋友说点什么…"
-                aria-label="聊天消息"
-                value={chat}
-                onChange={(e) => setChat(e.target.value)}
-                maxLength={300}
+                className="raise-input"
+                aria-label="加注到的总金额"
+                type="number"
+                inputMode="numeric"
+                step={1}
+                min={Math.min(minRaise, maxRaise)}
+                max={maxRaise}
+                value={raise}
+                onChange={(e) => setRaise(Number(e.target.value))}
               />
-              <button
-                disabled={!chat.trim() || !connected}
-                aria-label="发送消息"
-              >
-                <Send size={17} />
+            </label>
+            <input
+              aria-label="加注筹码滑块"
+              type="range"
+              min={Math.min(minRaise, maxRaise)}
+              max={maxRaise}
+              step={1}
+              value={raise}
+              onChange={(e) => setRaise(Number(e.target.value))}
+            />
+            <div className="raise-presets">
+              {[0.25, 0.5, 0.75].map((fraction) => (
+                <button
+                  key={fraction}
+                  type="button"
+                  onClick={() =>
+                    setRaise(
+                      Math.min(
+                        maxRaise,
+                        Math.max(
+                          minRaise,
+                          (hand?.currentBet || 0) +
+                            Math.round((hand?.pot || 0) * fraction),
+                        ),
+                      ),
+                    )
+                  }
+                >
+                  {fraction * 100}%
+                </button>
+              ))}
+              <button type="button" onClick={() => setRaise(maxRaise)}>
+                All-in
               </button>
-            </form>
-            <span className="chat-hint">Enter 发送 · 文明交流</span>
-          </aside>
-        )}
-      </div>
+            </div>
+            <p className="raise-hint">
+              最低 {fmt(Math.min(minRaise, maxRaise))} · 最高 {fmt(maxRaise)}
+              {maxRaise < minRaise ? " · 仅可全下" : ""}
+            </p>
+          </fieldset>
+          <Button
+            className="primary full"
+            type="submit"
+            disabled={
+              !myHand?.canRaise ||
+              !connected ||
+              submitting ||
+              !Number.isInteger(raise) ||
+              raise < Math.min(minRaise, maxRaise) ||
+              raise > maxRaise
+            }
+          >
+            {raise === maxRaise
+              ? `确认全下 ${fmt(me?.stack || 0)}`
+              : `确认加注至 ${fmt(raise)}`}
+          </Button>
+        </form>
+      </Modal>
       <Modal
         open={seat !== null}
         onOpenChange={(v) => {
@@ -2360,8 +2563,11 @@ function Room({
       >
         <EmojiChoices
           disabledReason={
-            !allowedReactions ? "这张牌桌已关闭 Emoji 互动。"
-              : !connected ? "连接恢复后即可发送表情。" : undefined
+            !allowedReactions
+              ? "这张牌桌已关闭 Emoji 互动。"
+              : !connected
+                ? "连接恢复后即可发送表情。"
+                : undefined
           }
           onSelect={(emoji) => {
             if (!allowedReactions || !connected || !target) return;
@@ -2379,8 +2585,11 @@ function Room({
       >
         <EmojiChoices
           disabledReason={
-            !allowedReactions ? "这张牌桌已关闭 Emoji 互动。"
-              : !connected ? "连接恢复后即可发送表情。" : undefined
+            !allowedReactions
+              ? "这张牌桌已关闭 Emoji 互动。"
+              : !connected
+                ? "连接恢复后即可发送表情。"
+                : undefined
           }
           onSelect={(emoji) => {
             if (!allowedReactions || !connected) return;

@@ -15,19 +15,20 @@ import (
 )
 
 type command struct {
-	TurnToken string          `json:"turnToken"`
-	Type      string          `json:"type"`
-	Seat      int             `json:"seat"`
-	BuyIn     int64           `json:"buyIn"`
-	Action    string          `json:"action"`
-	Amount    int64           `json:"amount"`
-	Settings  RoomSettings    `json:"settings"`
-	PlayerID  string          `json:"playerId"`
-	Text      string          `json:"text"`
-	MessageID string          `json:"messageId"`
-	To        string          `json:"to"`
-	Emoji     string          `json:"emoji"`
-	Data      json.RawMessage `json:"data"`
+	TurnToken  string          `json:"turnToken"`
+	Type       string          `json:"type"`
+	Seat       int             `json:"seat"`
+	BuyIn      int64           `json:"buyIn"`
+	SittingOut bool            `json:"sittingOut"`
+	Action     string          `json:"action"`
+	Amount     int64           `json:"amount"`
+	Settings   RoomSettings    `json:"settings"`
+	PlayerID   string          `json:"playerId"`
+	Text       string          `json:"text"`
+	MessageID  string          `json:"messageId"`
+	To         string          `json:"to"`
+	Emoji      string          `json:"emoji"`
+	Data       json.RawMessage `json:"data"`
 }
 
 func newID() string {
@@ -166,6 +167,12 @@ func (s *Server) mutate(r *room, p *Player, c *client, m command, sound *string)
 		p.Seat = m.Seat
 		p.Stack = amount
 		p.SittingOut = false
+	case "sitout":
+		if p.Seat < 0 {
+			return errors.New("入座后才可暂离")
+		}
+		// The active hand keeps its participants; this flag applies to the next deal.
+		p.SittingOut = m.SittingOut
 	case "stand":
 		if r.active() {
 			return errors.New("请等本手结束后离座")
