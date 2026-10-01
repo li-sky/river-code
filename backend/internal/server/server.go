@@ -77,18 +77,19 @@ type Message struct {
 	At     time.Time `json:"at"`
 }
 type roomData struct {
-	ID         string       `json:"id"`
-	Name       string       `json:"name"`
-	HostID     string       `json:"hostId"`
-	Settings   RoomSettings `json:"settings"`
-	Players    []*Player    `json:"players"`
-	Hand       *poker.Hand  `json:"hand"`
-	Messages   []Message    `json:"messages"`
-	Version    uint64       `json:"version"`
-	Deadline   time.Time    `json:"deadline"`
-	LastDealer int          `json:"lastDealer"`
-	HandNumber int          `json:"handNumber"`
-	TurnToken  string       `json:"turnToken"`
+	ID            string       `json:"id"`
+	Name          string       `json:"name"`
+	HostID        string       `json:"hostId"`
+	Settings      RoomSettings `json:"settings"`
+	Players       []*Player    `json:"players"`
+	Hand          *poker.Hand  `json:"hand"`
+	Messages      []Message    `json:"messages"`
+	PinnedMessage *Message     `json:"pinnedMessage"`
+	Version       uint64       `json:"version"`
+	Deadline      time.Time    `json:"deadline"`
+	LastDealer    int          `json:"lastDealer"`
+	HandNumber    int          `json:"handNumber"`
+	TurnToken     string       `json:"turnToken"`
 }
 type room struct {
 	mu sync.Mutex
@@ -355,7 +356,7 @@ func (r *room) view(id string) any {
 		h["turnToken"] = r.TurnToken
 		hand = h
 	}
-	return map[string]any{"id": r.ID, "name": r.Name, "hostId": r.HostID, "settings": r.Settings, "players": r.Players, "hand": hand, "messages": r.Messages, "version": r.Version, "voiceParticipantIds": r.voiceIDs()}
+	return map[string]any{"id": r.ID, "name": r.Name, "hostId": r.HostID, "settings": r.Settings, "players": r.Players, "hand": hand, "messages": r.Messages, "pinnedMessage": r.PinnedMessage, "version": r.Version, "voiceParticipantIds": r.voiceIDs()}
 }
 func (r *room) player(id string) *Player {
 	for _, p := range r.Players {

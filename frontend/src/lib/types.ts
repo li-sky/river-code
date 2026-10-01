@@ -93,6 +93,7 @@ export interface RoomState {
   players: Player[];
   hand: HandView | null;
   messages: Message[];
+  pinnedMessage: Message | null;
   version: number;
   voiceParticipantIds: string[];
 }
