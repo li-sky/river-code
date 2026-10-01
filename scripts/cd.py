@@ -120,7 +120,8 @@ class Deployment:
     def receive(self, command, stream):
         status_match = re.fullmatch(r"status ([0-9a-f]{40})", command)
         if status_match:
-            print(self.status(status_match.group(1)), flush=True)
+            with self.locked():
+                print(self.status(status_match.group(1)), flush=True)
             return
         match = re.fullmatch(r"deploy ([0-9a-f]{40})", command)
         if not match:
