@@ -24,6 +24,8 @@ Message {id,userId,name,text,at}
 Server: {type:'state',state:RoomState}; {type:'error',message}; {type:'reaction',from,to,emoji}; {type:'signal',from,data}; {type:'sound',sound:'deal'|'chips'|'fold'|'win'}
 Client: {type:'sit',seat,buyIn?}; {type:'stand'}; {type:'start'} (host next hand); {type:'action',action:'fold'|'check'|'call'|'raise'|'allin',amount?,turnToken} (raise amount is TOTAL street bet; token is from current hand view and rejects stale/double submissions); {type:'settings',settings:RoomSettings}; {type:'stack',playerId,amount} host between hands; {type:'chat',text}; {type:'reaction',to,emoji}; {type:'emoji',emoji}; {type:'signal',to,data}; {type:'leave'}.
 
+Emoji strings in room commands and user settings allow up to 16 Unicode code points and 64 UTF-8 bytes, rejecting CR/LF/NUL. Avatar emoji may be empty to clear; directed reactions must be nonempty. The picker sends native Unicode, including skin-tone and ZWJ sequences, from its complete bundled dataset. This length validation is not an emoji whitelist.
+
 Private cards must never appear in public list or other players' state. Spectators use seat -1. Engine persists full private JSON snapshot, public view separately. Timers/recovery occur server-side. HTTPS needed for microphone outside localhost; TURN configurable for NAT.
 
 Host may issue {type:'kick',playerId} between hands. Expelled sockets close with code4003 and do not automatically reconnect. Between hands, disconnected spectators are pruned after2minutes and seated players after5minutes; host migrates after30seconds offline. Active hands retain departed participants through settlement.

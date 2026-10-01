@@ -49,6 +49,68 @@ func getCookie(t *testing.T, w *httptest.ResponseRecorder, name string) *http.Co
 	t.Fatalf("missing %s cookie", name)
 	return nil
 }
+func TestEmojiSequencesAndLimits(t *testing.T) {
+	s, h := setup(t)
+	w := call(h, "POST", "/api/auth/guest", `{"name":"Emoji","password":"room-secret"}`)
+	c := getCookie(t, w, "river_session")
+	var u User
+	if err := json.Unmarshal(w.Body.Bytes(), &u); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name  string
+		emoji string
+		valid bool
+	}{
+		{"skin tone kiss", "👩🏽‍❤️‍💋‍👨🏻", true},
+		{"family", "👨‍👩‍👧‍👦", true},
+		{"flag", "🇨🇳", true},
+		{"clear", "", true},
+		{"maximum code points and bytes", strings.Repeat("😀", 16), true},
+		{"too many code points", strings.Repeat("a", 17), false},
+		{"too many bytes", strings.Repeat("😀", 17), false},
+		{"carriage return", "😀\r", false},
+		{"line feed", "😀\n", false},
+		{"nul", "😀\x00", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Exercise both persistence entry points with an existing saved value.
+			for _, route := range []string{"service", "patch"} {
+				if err := s.SetEmoji(context.Background(), u.ID, "🤔"); err != nil {
+					t.Fatal(err)
+				}
+				if route == "service" {
+					err := s.SetEmoji(context.Background(), u.ID, tc.emoji)
+					if (err == nil) != tc.valid {
+						t.Fatalf("SetEmoji valid=%v: %v", tc.valid, err)
+					}
+				} else {
+					body, _ := json.Marshal(map[string]any{"settings": map[string]string{"avatarEmoji": tc.emoji}})
+					res := call(h, "PATCH", "/api/me", string(body), c)
+					want := http.StatusBadRequest
+					if tc.valid {
+						want = http.StatusOK
+					}
+					if res.Code != want {
+						t.Fatalf("PATCH status=%d want=%d: %s", res.Code, want, res.Body.String())
+					}
+				}
+				res := call(h, "GET", "/api/me", "", c)
+				var saved User
+				if err := json.Unmarshal(res.Body.Bytes(), &saved); err != nil {
+					t.Fatal(err)
+				}
+				want := "🤔"
+				if tc.valid {
+					want = tc.emoji
+				}
+				if saved.Settings.AvatarEmoji != want {
+					t.Fatalf("%s saved %q want %q", route, saved.Settings.AvatarEmoji, want)
+				}
+			}
+		})
+	}
+}
 func TestAccountSessionAndJoinPassword(t *testing.T) {
 	_, h := setup(t)
 	bad := call(h, "POST", "/api/auth/register", `{"name":"Alice","email":"alice@example.com","password":"longpassword","joinPassword":"wrong"}`)

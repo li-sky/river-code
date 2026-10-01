@@ -3,6 +3,7 @@
 - React：MIT；页面与状态管理。
 - Radix UI Primitives：MIT；对话框与开关，复用其键盘交互和可访问性行为。
 - Lucide：ISC；界面图标。
+- [emoji-picker-react](https://github.com/ealush/emoji-picker-react)：MIT；完整 Emoji 数据集、中文搜索、分类、肤色与最近使用，按需加载，以原生 Unicode 字符发送和显示。
 - Vite、TypeScript：分别为 MIT、Apache-2.0；开发和构建工具。
 - gorilla/websocket：BSD-2-Clause；WebSocket 通信。
 - pgx：MIT；PostgreSQL 驱动。

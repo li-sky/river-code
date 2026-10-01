@@ -18,6 +18,8 @@
 
 前端目前在 `App.tsx` 中按会话与 `room` 参数显示入口、大厅和牌桌；表格中的三份页面规格对应这三个逻辑页面。用户设置、开房、买入和房间设置是页面内弹窗，归入共享交互规格。
 
+完整表情选择器位于 [`frontend/src/components/EmojiPicker.tsx`](../frontend/src/components/EmojiPicker.tsx)，由 App 中两个表情弹窗按需加载，归入 shared 规格。
+
 机器可读的对应关系保存在 [spec-map.json](spec-map.json)，供代理或工具按源码路径定位规格。规格与代码分仓维护；修改行为时同步相关规格和验收证据。
 
 ## 开发步骤

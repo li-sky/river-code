@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
@@ -67,7 +69,22 @@ const phases: Record<string, string> = {
   showdown: "摊牌",
   complete: "本手结束",
 };
-const emojis = ["🔥", "👏", "😂", "🤔", "😎", "💀", "❤️", "🍀"];
+const EmojiPicker = lazy(() => import("./components/EmojiPicker"));
+function EmojiChoices({
+  disabledReason,
+  onSelect,
+}: {
+  disabledReason?: string;
+  onSelect: (emoji: string) => void;
+}) {
+  if (disabledReason)
+    return <p className="muted" role="status">{disabledReason}</p>;
+  return (
+    <Suspense fallback={<p className="muted" role="status">正在加载表情…</p>}>
+      <EmojiPicker onSelect={onSelect} />
+    </Suspense>
+  );
+}
 function Button({
   children,
   onClick,
@@ -98,18 +115,33 @@ function Modal({
   title,
   description,
   children,
+  restoreFocus = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   title: string;
   description?: string;
   children: ReactNode;
+  restoreFocus?: boolean;
 }) {
+  const opener = useRef<HTMLElement | null>(null);
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="modal-overlay" />
-        <Dialog.Content className="modal">
+        <Dialog.Content
+          className="modal"
+          onOpenAutoFocus={() => {
+            if (restoreFocus)
+              opener.current = document.activeElement as HTMLElement;
+          }}
+          onCloseAutoFocus={(event) => {
+            if (restoreFocus && opener.current?.isConnected) {
+              event.preventDefault();
+              opener.current.focus();
+            }
+          }}
+        >
           <div className="modal-heading">
             <div>
               <Dialog.Title>{title}</Dialog.Title>
@@ -2133,49 +2165,43 @@ function Room({
           if (!v) setTarget(null);
         }}
         title={`向 ${target?.name || ""} 发射表情`}
+        restoreFocus
         description="一点互动，让牌桌更热闹。"
       >
-        <div className="emoji-grid">
-          {emojis.map((emoji) => (
-            <button
-              disabled={!allowedReactions || !connected}
-              key={emoji}
-              onClick={() => {
-                send({ type: "reaction", to: target?.id, emoji });
-                setTarget(null);
-              }}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-        {!allowedReactions && (
-          <p className="muted">这张牌桌已关闭 Emoji 互动。</p>
-        )}
+        <EmojiChoices
+          disabledReason={
+            !allowedReactions ? "这张牌桌已关闭 Emoji 互动。"
+              : !connected ? "连接恢复后即可发送表情。" : undefined
+          }
+          onSelect={(emoji) => {
+            if (!allowedReactions || !connected || !target) return;
+            send({ type: "reaction", to: target.id, emoji });
+            setTarget(null);
+          }}
+        />
       </Modal>
       <Modal
         open={selfEmoji}
         onOpenChange={setSelfEmoji}
         title="此刻的心情"
+        restoreFocus
         description="选一个表情挂在头像旁，让大家知道你的想法。"
       >
-        <div className="emoji-grid">
-          {emojis.map((emoji) => (
-            <button
-              key={emoji}
-              disabled={!allowedReactions || !connected}
-              onClick={() => {
-                send({ type: "emoji", emoji });
-                bubble(user.id, emoji);
-                setSelfEmoji(false);
-              }}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
+        <EmojiChoices
+          disabledReason={
+            !allowedReactions ? "这张牌桌已关闭 Emoji 互动。"
+              : !connected ? "连接恢复后即可发送表情。" : undefined
+          }
+          onSelect={(emoji) => {
+            if (!allowedReactions || !connected) return;
+            send({ type: "emoji", emoji });
+            bubble(user.id, emoji);
+            setSelfEmoji(false);
+          }}
+        />
         <Button
           className="secondary full"
+          disabled={!allowedReactions || !connected}
           onClick={() => {
             send({ type: "emoji", emoji: "" });
             setSelfEmoji(false);

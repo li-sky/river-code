@@ -1901,22 +1901,23 @@ input[type="range"] {
   text-align: center;
   padding: 9px 0 15px;
 }
-.emoji-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 22px;
+.emoji-picker {
+  min-width: 0;
+  margin-bottom: 16px;
 }
-.emoji-grid button {
-  border-radius: 10px;
-  padding: 15px;
-  background: #1f343e;
-  font-size: 30px;
-  transition: 0.2s;
-}
-.emoji-grid button:hover {
-  background: #344942;
-  transform: scale(1.06);
+.emoji-picker aside.EmojiPickerReact {
+  --epr-bg-color: #15232c;
+  --epr-category-label-bg-color: #15232c;
+  --epr-text-color: #eaf0ee;
+  --epr-search-input-bg-color: #0c1921;
+  --epr-search-input-text-color: #eaf0ee;
+  --epr-search-border-color: #38474d;
+  --epr-hover-bg-color: #344942;
+  --epr-focus-bg-color: #344942;
+  --epr-highlight-color: var(--gold);
+  --epr-picker-border-color: #38474d;
+  --epr-emoji-size: 28px;
+  --epr-emoji-padding: 5px;
 }
 .rules-copy p {
   font-size: 12px;
@@ -2969,10 +2970,6 @@ input[type="range"] {
   }
   .profile-avatar > .muted {
     font-size: 9px;
-  }
-  .emoji-grid button {
-    font-size: 28px;
-    padding: 12px;
   }
   .toast {
     top: 75px;
