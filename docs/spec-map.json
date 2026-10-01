@@ -88,7 +88,9 @@
         "frontend/src/lib/types.ts",
         "frontend/src/lib/sound.ts",
         "frontend/src/lib/voice.ts",
-        "frontend/src/style.css"
+        "frontend/src/style.css",
+        "frontend/src/components/ChatBubble.tsx",
+        "frontend/src/components/ChatMessages.tsx"
       ],
       "path": "pages/04-shared-settings-media.sdd.md"
     },

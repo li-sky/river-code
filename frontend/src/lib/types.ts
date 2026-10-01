@@ -85,6 +85,7 @@ export interface Message {
   name: string;
   text: string;
   at: string;
+  recalled?: boolean;
 }
 export interface RoomState {
   id: string;

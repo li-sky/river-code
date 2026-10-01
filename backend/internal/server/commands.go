@@ -309,6 +309,48 @@ func (s *Server) mutate(r *room, p *Player, c *client, m command, sound *string)
 		if len(r.Messages) > 100 {
 			r.Messages = r.Messages[len(r.Messages)-100:]
 		}
+	case "recall_message":
+		if !s.cfg.ChatEnabled || !r.Settings.ChatEnabled {
+			return errors.New("本桌未开启文字聊天")
+		}
+		if !c.allow("recall", 12) {
+			return errors.New("撤回操作过于频繁")
+		}
+		var selected *Message
+		for i := range r.Messages {
+			if r.Messages[i].ID == m.MessageID {
+				selected = &r.Messages[i]
+				break
+			}
+		}
+		if selected == nil && r.PinnedMessage != nil && r.PinnedMessage.ID == m.MessageID {
+			selected = r.PinnedMessage
+		}
+		if selected == nil {
+			return errors.New("消息不存在或已不在最近聊天记录中")
+		}
+		if selected.UserID != p.ID {
+			return errors.New("只能撤回自己的消息")
+		}
+		if selected.Recalled {
+			return errors.New("消息已撤回")
+		}
+		age := time.Since(selected.At)
+		if age < 0 || age > 2*time.Minute {
+			return errors.New("只能撤回两分钟内发送的消息")
+		}
+		selected.Text = ""
+		selected.Recalled = true
+		// A retained pin may outlive the rolling history. Keep its recall notice.
+		if selected == r.PinnedMessage {
+			r.Messages = append(r.Messages, *selected)
+			if len(r.Messages) > 100 {
+				r.Messages = r.Messages[len(r.Messages)-100:]
+			}
+		}
+		if r.PinnedMessage != nil && r.PinnedMessage.ID == m.MessageID {
+			r.PinnedMessage = nil
+		}
 	case "pin_message", "unpin_message":
 		if !host {
 			return errors.New("只有房主可以管理置顶消息")
@@ -333,7 +375,7 @@ func (s *Server) mutate(r *room, p *Player, c *client, m command, sound *string)
 					break
 				}
 			}
-			if selected == nil {
+			if selected == nil || selected.Recalled {
 				return errors.New("消息不存在或已不在最近聊天记录中")
 			}
 			r.PinnedMessage = selected

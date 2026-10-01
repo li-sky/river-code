@@ -1769,6 +1769,7 @@ input[type="range"] {
   overflow: auto;
   padding: 18px 15px;
   min-height: 0;
+  overscroll-behavior: contain;
 }
 .chat-heading,
 .chat-form,
@@ -1831,38 +1832,156 @@ input[type="range"] {
   min-height: 28px;
   flex-shrink: 0;
 }
-.chat-message .chat-pin-button {
-  margin-top: 4px;
-}
 .chat-message {
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
-.chat-message > span {
+.chat-message-trigger {
+  display: block;
+  width: 100%;
+  cursor: context-menu;
+  touch-action: pan-y;
+  user-select: none;
+}
+.chat-message-trigger:focus-visible,
+.chat-message-trigger[data-state="open"] {
+  outline: none;
+}
+.chat-message-trigger:focus-visible .cs-message__content,
+.chat-message-trigger[data-state="open"] .cs-message__content {
+  outline: 2px solid #a7cfa0;
+  outline-offset: 3px;
+}
+.river-chat-bubble.cs-message {
+  margin: 0;
+  max-width: 100%;
+}
+.river-chat-bubble .cs-message__content-wrapper {
+  min-width: 0;
+  max-width: calc(100% - 54px);
+}
+.river-chat-bubble .cs-message__header {
   display: flex;
-  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 0 6px;
   color: #9eb4b5;
-  font-size: 14px;
-  margin-bottom: 6px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
 }
-.chat-message time {
-  color: var(--muted);
-  font-size: 14px;
+.river-chat-bubble time {
+  flex-shrink: 0;
+  color: #839b9e;
+  font-size: 10px;
 }
-.chat-message p {
-  font-size: 16px;
+.river-chat-bubble .cs-message__content {
+  position: relative;
+  background: #e6ece9;
+  color: #172a24;
+  border-radius: 9px;
+  padding: 10px 12px;
+}
+.river-chat-bubble .cs-message__content::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 12px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  transform: rotate(45deg);
+}
+.river-chat-bubble .cs-message__text-content {
+  font-size: 15px;
   line-height: 1.6;
   overflow-wrap: anywhere;
-  color: #c8d6d2;
-  background: #1d2e36;
-  border-radius: 0 9px 9px 9px;
-  padding: 8px 10px;
+  white-space: pre-wrap;
 }
-.own-message > span {
-  color: #c9b791;
+.river-chat-bubble.cs-message--outgoing .cs-message__content {
+  background: #a9db87;
+  color: #163023;
 }
-.own-message p {
-  background: #2f3b33;
-  color: #dddfcc;
+.river-chat-bubble.cs-message--outgoing .cs-message__content::before {
+  left: auto;
+  right: -5px;
+}
+.river-chat-bubble.cs-message--outgoing .cs-message__header {
+  flex-direction: row-reverse;
+}
+.river-chat-bubble .chat-avatar.cs-avatar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: #30474b;
+  color: #e3ede8;
+  font-size: 15px;
+}
+.river-chat-bubble .chat-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+.river-chat-bubble .cs-message__footer {
+  padding: 6px 0 0;
+}
+.chat-pinned-tag {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--gold);
+  font-size: 10px;
+}
+.chat-recalled {
+  margin: 16px 0;
+  text-align: center;
+  font-size: 12px;
+  color: #94a8aa;
+  overflow-wrap: anywhere;
+}
+.chat-recalled time {
+  font-size: 10px;
+  margin-left: 4px;
+}
+.chat-message-menu {
+  z-index: 70;
+  width: min(174px, calc(100vw - 16px));
+  max-height: min(calc(100dvh - 16px), var(--radix-context-menu-content-available-height));
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid #405658;
+  border-radius: 12px;
+  background: #203237;
+  box-shadow: 0 8px 30px #0008;
+}
+.chat-message-menu [role="menuitem"] {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: transparent;
+  color: #e5eee8;
+  text-align: left;
+  font-size: 14px;
+}
+.chat-message-menu [role="menuitem"][data-highlighted] {
+  background: #354c4e;
+}
+.chat-message-menu [data-disabled] {
+  opacity: .4;
+}
+.chat-message-menu .recall-action {
+  color: #f0b6a8;
 }
 .empty-chat {
   height: 100%;

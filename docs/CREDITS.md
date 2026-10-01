@@ -1,7 +1,8 @@
 # 组件与素材
 
 - React：MIT；页面与状态管理。
-- Radix UI Primitives：MIT；对话框与开关，复用其键盘交互和可访问性行为。
+- [Radix UI Primitives](https://www.radix-ui.com/primitives/docs/components/context-menu)：MIT；对话框、开关与消息菜单，复用右键/触摸长按、焦点、键盘导航及碰撞定位。
+- [Chatscope Chat UI Kit](https://github.com/chatscope/chat-ui-kit-react)：MIT；聊天复用 Message、TextContent、Header/Footer 与 Avatar，按项目主题覆盖颜色、间距及气泡尾部。使用 TextContent 安全渲染用户文字。
 - Lucide：ISC；界面图标。
 - [emoji-picker-react](https://github.com/ealush/emoji-picker-react)：MIT；完整 Emoji 数据集、中文搜索、分类、肤色与最近使用，按需加载，以原生 Unicode 字符发送和显示。
 - Vite、TypeScript：分别为 MIT、Apache-2.0；开发和构建工具。

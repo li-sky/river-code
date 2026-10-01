@@ -159,6 +159,7 @@ function seatPosition(index: number, count: number, mobile = false) {
   };
 }
 const EmojiPicker = lazy(() => import("./components/EmojiPicker"));
+const ChatMessages = lazy(() => import("./components/ChatMessages").then((module) => ({ default: module.ChatMessages })));
 function EmojiChoices({
   disabledReason,
   onSelect,
@@ -1239,7 +1240,6 @@ function Room({
     pendingToken = useRef(""),
     ws = useRef<WebSocket | null>(null),
     handler = useRef<(m: WSMessage) => void>(() => {}),
-    chatEnd = useRef<HTMLDivElement>(null),
     tableArea = useRef<HTMLDivElement>(null),
     roomPage = useRef<HTMLElement>(null),
     actionDock = useRef<HTMLElement>(null),
@@ -1259,6 +1259,7 @@ function Room({
       drawer: "left" | "right" | null;
       consumed: boolean;
     } | null>(null),
+    bubbleSources = useRef<Record<string, string>>({}),
     bubbleTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const chatOpen = drawer === "right",
     menuOpen = drawer === "left";
@@ -1298,7 +1299,8 @@ function Room({
     sendSignal,
     iceServers: config.iceServers,
   });
-  const bubble = (id: string, text: string) => {
+  const bubble = (id: string, text: string, source = "") => {
+    bubbleSources.current[id] = source;
     clearTimeout(bubbleTimers.current[id]);
     setBubbles((b) => ({ ...b, [id]: text }));
     bubbleTimers.current[id] = setTimeout(
@@ -1317,8 +1319,17 @@ function Room({
       if (old) {
         const previous = new Set(old.messages.map((m) => m.id));
         message.state.messages
-          .filter((m) => !previous.has(m.id))
-          .forEach((m) => bubble(m.userId, m.text));
+          .filter((m) => !m.recalled && !previous.has(m.id))
+          .forEach((m) => bubble(m.userId, m.text, m.id));
+        message.state.messages.filter((m) => m.recalled && bubbleSources.current[m.userId] === m.id).forEach((m) => {
+          clearTimeout(bubbleTimers.current[m.userId]);
+          delete bubbleSources.current[m.userId];
+          setBubbles((current) => {
+            const next = { ...current };
+            delete next[m.userId];
+            return next;
+          });
+        });
         message.state.players
           .filter(
             (p) =>
@@ -1411,9 +1422,6 @@ function Room({
       Object.values(bubbleTimers.current).forEach(clearTimeout);
     };
   }, [roomId, onError, user.name, user.avatarUrl]);
-  useEffect(() => {
-    chatEnd.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [state?.messages.length, chatOpen]);
   const hand = state?.hand,
     me = state?.players.find((p) => p.id === user.id),
     myHand = hand?.players.find((p) => p.id === user.id),
@@ -2238,65 +2246,19 @@ function Room({
                 </div>
               </section>
             )}
-            <div className="chat-messages">
-              {state.messages.length ? (
-                state.messages.map((m) => (
-                  <div
-                    className={
-                      "chat-message " +
-                      (m.userId === user.id ? "own-message" : "")
-                    }
-                    key={m.id}
-                  >
-                    <span>
-                      {m.name}
-                      <time>
-                        {new Date(m.at).toLocaleTimeString("zh-CN", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </time>
-                    </span>
-                    <p>{m.text}</p>
-                    {isHost && (
-                      <button
-                        type="button"
-                        className="chat-pin-button"
-                        disabled={!connected}
-                        aria-label={
-                          pinnedMessage?.id === m.id
-                            ? "取消置顶此消息"
-                            : "置顶此消息"
-                        }
-                        onClick={() =>
-                          send({
-                            type:
-                              pinnedMessage?.id === m.id
-                                ? "unpin_message"
-                                : "pin_message",
-                            messageId: m.id,
-                          })
-                        }
-                      >
-                        {pinnedMessage?.id === m.id ? (
-                          <PinOff size={13} />
-                        ) : (
-                          <Pin size={13} />
-                        )}
-                        {pinnedMessage?.id === m.id ? "取消置顶" : "置顶"}
-                      </button>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="empty-chat">
-                  <MessageCircle size={30} />
-                  <p>一声招呼，牌局更有温度。</p>
-                  <span>消息也会在头像气泡中出现</span>
-                </div>
-              )}
-              <div ref={chatEnd} />
-            </div>
+            <Suspense fallback={<div className="chat-messages muted">正在加载聊天…</div>}>
+            <ChatMessages
+              messages={state.messages}
+              players={state.players}
+              userId={user.id}
+              isHost={isHost}
+              connected={connected}
+              pinnedId={pinnedMessage?.id}
+              now={now}
+              send={send}
+              onError={onError}
+            />
+            </Suspense>
             <form
               className="chat-form"
               onSubmit={(e) => {
@@ -2318,7 +2280,7 @@ function Room({
                 <Send size={17} />
               </button>
             </form>
-            <span className="chat-hint">Enter 发送 · 文明交流</span>
+            <span className="chat-hint">Enter 发送 · 右键 / 长按消息可操作</span>
           </Drawer>
         )}
       </div>
