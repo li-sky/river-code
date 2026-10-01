@@ -73,7 +73,7 @@ with sync_playwright() as p:
     for _ in range(3):
         acted = False
         for page in pages:
-            action = page.get_by_role('button', name='ALL IN', exact=True)
+            action = page.get_by_role('button', name='ALL IN', exact=False)
             if action.is_visible() and action.is_enabled():
                 action.click()
                 page.wait_for_timeout(200)

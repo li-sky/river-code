@@ -10,12 +10,15 @@ import * as Switch from "@radix-ui/react-switch";
 import {
   ArrowLeft,
   ArrowRight,
+  AlertCircle,
   Check,
+  Clock3,
   CircleHelp,
   Crown,
   Github,
   Headphones,
   LogOut,
+  LoaderCircle,
   MessageCircle,
   Mic,
   MicOff,
@@ -68,6 +71,29 @@ const phases: Record<string, string> = {
   complete: "本手结束",
 };
 const emojis = ["🔥", "👏", "😂", "🤔", "😎", "💀", "❤️", "🍀"];
+function seatPosition(index: number, count: number, mobile = false) {
+  // Nine seats need wider paired rows on narrow screens to keep names readable.
+  const portraitNine = [
+    [50, 94],
+    [94, 84],
+    [102, 54],
+    [94, 30],
+    [76, 6],
+    [24, 6],
+    [6, 30],
+    [-2, 54],
+    [6, 84],
+  ];
+  if (mobile && count === 9) {
+    const [x, y] = portraitNine[index];
+    return { x, y };
+  }
+  const angle = (index / count) * Math.PI * 2;
+  return {
+    x: 50 + Math.sin(angle) * 36,
+    y: 50 + Math.cos(angle) * 43,
+  };
+}
 function Button({
   children,
   onClick,
@@ -148,6 +174,7 @@ function Toggle({
       </span>
       <Switch.Root
         className="switch"
+        aria-label={label}
         checked={value}
         onCheckedChange={onChange}
         disabled={disabled}
@@ -468,6 +495,7 @@ export default function App() {
             <>
               <button
                 className="profile-trigger"
+                aria-label={`${user.name} 的个人设置`}
                 onClick={() => setProfile(true)}
               >
                 <Avatar name={user.name} url={user.avatarUrl} />
@@ -523,7 +551,7 @@ export default function App() {
                 <Users size={17} /> 多人对战
               </span>
             </div>
-            <div className="welcome-art">
+            <div className="welcome-art" aria-hidden="true">
               <Card code="As" />
               <Card code="Kh" />
               <div className="art-chip">
@@ -535,10 +563,11 @@ export default function App() {
             <div className="eyebrow">TAKE YOUR SEAT</div>
             <h2>入座，开始今晚的牌局</h2>
             <p className="muted">筹码只用于娱乐，好时光才是真正的收获。</p>
-            <div className="segmented">
+            <div className="segmented" role="group" aria-label="入座方式">
               {config.guestEnabled && (
                 <button
                   className={authMode === "guest" ? "active" : ""}
+                  aria-pressed={authMode === "guest"}
                   onClick={() => setAuthMode("guest")}
                 >
                   访客
@@ -546,12 +575,14 @@ export default function App() {
               )}
               <button
                 className={authMode === "login" ? "active" : ""}
+                aria-pressed={authMode === "login"}
                 onClick={() => setAuthMode("login")}
               >
                 登录
               </button>
               <button
                 className={authMode === "register" ? "active" : ""}
+                aria-pressed={authMode === "register"}
                 onClick={() => setAuthMode("register")}
               >
                 注册
@@ -748,7 +779,7 @@ export default function App() {
                       {r.status === "playing" ? "牌局进行中" : "等待入座"}
                     </span>
                   </div>
-                  <div className="mini-table">
+                  <div className="mini-table" aria-hidden="true">
                     <div className="mini-board">
                       <Card code="As" small />
                       <Card code="Kh" small />
@@ -1032,6 +1063,7 @@ function Room({
     [editedSettings, setEditedSettings] = useState<RoomSettings>(defaultRoom),
     [chat, setChat] = useState(""),
     [raise, setRaise] = useState(0),
+    [submittingToken, setSubmittingToken] = useState(""),
     [now, setNow] = useState(Date.now()),
     [target, setTarget] = useState<Player | null>(null),
     [selfEmoji, setSelfEmoji] = useState(false),
@@ -1110,9 +1142,13 @@ function Room({
           .forEach((p) => bubble(p.id, p.avatarEmoji));
       }
       latestState.current = message.state;
+      if (message.state.hand?.turnToken !== pendingToken.current) {
+        setSubmittingToken("");
+      }
       setState(message.state);
     } else if (message.type === "error") {
       pendingToken.current = "";
+      setSubmittingToken("");
       onError(new Error(message.message));
     } else if (message.type === "sound") playSound(message.sound);
     else if (message.type === "signal")
@@ -1205,7 +1241,10 @@ function Room({
       (hand?.minRaise || state?.settings.bigBlind || 20),
     maxRaise = (me?.stack || 0) + (myHand?.bet || 0),
     seconds = hand
-      ? Math.max(0, Math.ceil((new Date(hand.deadline).getTime() - now) / 1000))
+      ? Math.min(
+          state?.settings.actionSeconds || 120,
+          Math.max(0, Math.ceil((new Date(hand.deadline).getTime() - now) / 1000)),
+        )
       : 0;
   useEffect(() => {
     setRaise(Math.min(maxRaise, minRaise));
@@ -1225,6 +1264,10 @@ function Room({
     );
   const seated = state.players.filter((p) => p.seat >= 0),
     watchers = state.players.filter((p) => p.seat < 0),
+    actingPlayer = active
+      ? state.players.find((p) => p.seat === hand?.turnSeat)
+      : undefined,
+    submitting = Boolean(hand?.turnToken && submittingToken === hand.turnToken),
     allowedReactions =
       config.reactionsEnabled && state.settings.reactionsEnabled,
     allowedChat = config.chatEnabled && state.settings.chatEnabled;
@@ -1245,11 +1288,13 @@ function Room({
   const action = (action: string, amount?: number) => {
     if (
       !connected ||
+      ws.current?.readyState !== WebSocket.OPEN ||
       !hand?.turnToken ||
       pendingToken.current === hand.turnToken
     )
       return;
     pendingToken.current = hand.turnToken;
+    setSubmittingToken(hand.turnToken);
     send({
       type: "action",
       action,
@@ -1295,7 +1340,9 @@ function Room({
             <div className="room-subtitle">
               <span>NL HOLD’EM</span>
               <span>
-                {state.settings.visibility === "private" ? "私人房间" : "公开房间"}
+                {state.settings.visibility === "private"
+                  ? "私人房间"
+                  : "公开房间"}
               </span>
               <span>
                 盲注 {fmt(state.settings.smallBlind)} /{" "}
@@ -1346,13 +1393,25 @@ function Room({
                 ? `第 ${hand.number} 手 · ${phases[hand.phase]}`
                 : "等待开局"}
             </span>
+            {actingPlayer && (
+              <span className="acting-player">
+                <Clock3 size={16} />
+                {actingPlayer.id === user.id
+                  ? "轮到你行动"
+                  : `${actingPlayer.name} 行动中`}
+              </span>
+            )}
             <span className="table-status-right">
               <Users size={14} />
               {seated.length}/{state.settings.maxPlayers} 入座
               {watchers.length > 0 && ` · ${watchers.length} 旁观`}
             </span>
           </div>
-          <div className="table-area">
+          <div
+            className={
+              "table-area " + (state.settings.maxPlayers === 9 ? "nine-seats" : "")
+            }
+          >
             <div className="poker-table" ref={tableArea}>
               <div className="table-rail" />
               <div className="felt">
@@ -1402,10 +1461,15 @@ function Room({
                       (me && me.seat >= 0 ? me.seat : 0) +
                       state.settings.maxPlayers) %
                     state.settings.maxPlayers,
-                  position =
-                    (visualIndex / state.settings.maxPlayers) * Math.PI * 2,
-                  x = 50 + Math.sin(position) * 45,
-                  y = 50 + Math.cos(position) * 43;
+                  position = seatPosition(
+                    visualIndex,
+                    state.settings.maxPlayers,
+                  ),
+                  portraitPosition = seatPosition(
+                    visualIndex,
+                    state.settings.maxPlayers,
+                    true,
+                  );
                 const turn = active && hand?.turnSeat === i,
                   winner =
                     hand?.phase === "complete" &&
@@ -1416,7 +1480,7 @@ function Room({
                     className={
                       "table-seat seat-index-" +
                       visualIndex +
-                      (Math.sin(position) > 0.5 ? " side-right" : "") +
+                      (position.x > 50.1 ? " side-right" : "") +
                       (p ? " occupied" : "") +
                       (p?.id === user.id ? " own-seat" : "") +
                       (turn ? " current-turn" : "") +
@@ -1425,15 +1489,21 @@ function Room({
                     }
                     style={
                       {
-                        "--seat-x": `${x}%`,
-                        "--seat-mobile-x": `${50 + Math.sin(position) * 36}%`,
-                        top: `${y}%`,
+                        "--seat-x": `${position.x}%`,
+                        "--seat-y": `${position.y}%`,
+                        "--seat-mobile-x": `${portraitPosition.x}%`,
+                        "--seat-mobile-y": `${portraitPosition.y}%`,
                       } as React.CSSProperties
                     }
                   >
                     {p ? (
                       <>
-                        <div className="seat-cards">
+                        <div
+                          className={
+                            "seat-cards " +
+                            (hp?.cards.length ? "revealed-cards" : "")
+                          }
+                        >
                           {hp &&
                             !hp.folded &&
                             (hp.cards.length
@@ -1491,7 +1561,9 @@ function Room({
                           {!p.connected && <WifiOff size={10} />}
                         </div>
                         {hand?.dealerSeat === i && (
-                          <span className="dealer-button">D</span>
+                          <span className="dealer-button" aria-label="庄家">
+                            D
+                          </span>
                         )}
                         {hp && (hp.folded || hp.allIn) && (
                           <span className="player-badge">
@@ -1530,18 +1602,16 @@ function Room({
                 if (!from || !to) return null;
                 const position = (seat: number) => {
                   if (seat < 0) return { x: 50, y: 3 };
-                  const a =
-                    (((seat -
+                  const index =
+                    (seat -
                       (me && me.seat >= 0 ? me.seat : 0) +
                       state.settings.maxPlayers) %
-                      state.settings.maxPlayers) /
-                      state.settings.maxPlayers) *
-                    Math.PI *
-                    2;
-                  return {
-                    x: 50 + Math.sin(a) * (window.innerWidth <= 600 ? 36 : 45),
-                    y: 50 + Math.cos(a) * 43,
-                  };
+                    state.settings.maxPlayers;
+                  return seatPosition(
+                    index,
+                    state.settings.maxPlayers,
+                    window.innerWidth <= 600,
+                  );
                 };
                 const a = position(from.seat),
                   b = position(to.seat);
@@ -1590,13 +1660,13 @@ function Room({
                   </div>
                 </div>
               )}
-              <div>
+              <div className="action-heading">
                 <span className="eyebrow">
                   {myTurn
-                    ? "YOUR MOVE"
+                    ? "轮到你行动"
                     : me && me.seat >= 0
-                      ? "YOUR SEAT"
-                      : "SPECTATING"}
+                      ? "已入座"
+                      : "正在旁观"}
                 </span>
                 <h3>
                   {myTurn
@@ -1629,52 +1699,48 @@ function Room({
                 )}
               </div>
             </div>
-            {myTurn ? (
-              <div className="bet-controls">
-                <div className="bet-actions">
-                  <Button
-                    className="fold-button"
-                    disabled={!connected}
-                    onClick={() => action("fold")}
-                  >
-                    弃牌
-                  </Button>
-                  <Button
-                    className="check-button"
-                    disabled={!connected}
-                    onClick={() => action(toCall ? "call" : "check")}
-                  >
-                    {toCall
-                      ? `跟注 ${fmt(Math.min(toCall, me?.stack || 0))}`
-                      : "过牌"}
-                  </Button>
-                  <Button
-                    className="primary"
-                    disabled={
-                      !connected ||
-                      !myHand?.canRaise ||
-                      maxRaise <= hand!.currentBet ||
-                      raise < minRaise ||
-                      raise > maxRaise
-                    }
-                    onClick={() => action("raise", raise)}
-                  >
-                    加注至 {fmt(raise)}
-                  </Button>
-                  <Button
-                    className="allin-button"
-                    disabled={
-                      !connected ||
-                      !me?.stack ||
-                      (maxRaise > hand!.currentBet && !myHand?.canRaise)
-                    }
-                    onClick={() => action("allin")}
-                  >
-                    ALL IN
-                  </Button>
+            {myTurn && (
+              <div className={"action-clock " + (seconds <= 5 ? "urgent" : "")}>
+                <span>
+                  {seconds <= 5 ? (
+                    <AlertCircle size={16} />
+                  ) : (
+                    <Clock3 size={16} />
+                  )}
+                  {seconds <= 5 ? "即将超时" : "行动剩余时间"}
+                </span>
+                <div
+                  className="action-clock-track"
+                  role="progressbar"
+                  aria-label="行动剩余时间"
+                  aria-valuemin={0}
+                  aria-valuemax={state.settings.actionSeconds}
+                  aria-valuenow={Math.min(
+                    seconds,
+                    state.settings.actionSeconds,
+                  )}
+                  aria-valuetext={`${seconds} 秒`}
+                >
+                  <i
+                    style={{
+                      width: `${Math.min(100, (seconds / state.settings.actionSeconds) * 100)}%`,
+                    }}
+                  />
                 </div>
+                <strong>
+                  {seconds}
+                  <small> 秒</small>
+                </strong>
+              </div>
+            )}
+            {myTurn ? (
+              <div className="bet-controls" aria-busy={submitting}>
                 {myHand?.canRaise && maxRaise >= minRaise && (
-                  <div className="raise-controls">
+                  <fieldset
+                    className="raise-controls"
+                    disabled={!connected || submitting}
+                  >
+                    <legend>加注到的本轮总额</legend>
                     <div className="raise-presets">
                       {[2, 3, 4].map((n) => (
                         <button
@@ -1723,16 +1789,76 @@ function Room({
                       value={raise}
                       onChange={(e) => setRaise(Number(e.target.value))}
                     />
-                    <input
-                      className="raise-input"
-                      aria-label="加注到的总金额"
-                      type="number"
-                      min={minRaise}
-                      max={maxRaise}
-                      value={raise}
-                      onChange={(e) => setRaise(Number(e.target.value))}
-                    />
-                  </div>
+                    <label className="raise-amount">
+                      <span>加注至</span>
+                      <input
+                        className="raise-input"
+                        aria-label="加注到的总金额"
+                        type="number"
+                        inputMode="numeric"
+                        step={1}
+                        min={minRaise}
+                        max={maxRaise}
+                        value={raise}
+                        onChange={(e) => setRaise(Number(e.target.value))}
+                      />
+                    </label>
+                    <p className="raise-hint">
+                      本轮累计下注 · 最低 {fmt(minRaise)} · 最高 {fmt(maxRaise)}
+                    </p>
+                  </fieldset>
+                )}
+                <div className="bet-actions">
+                  <Button
+                    className="fold-button"
+                    disabled={!connected || submitting}
+                    onClick={() => action("fold")}
+                  >
+                    弃牌
+                  </Button>
+                  <Button
+                    className="check-button"
+                    disabled={!connected || submitting}
+                    onClick={() => action(toCall ? "call" : "check")}
+                  >
+                    {toCall
+                      ? `跟注 ${fmt(Math.min(toCall, me?.stack || 0))}`
+                      : "过牌"}
+                  </Button>
+                  <Button
+                    className="primary"
+                    disabled={
+                      !connected ||
+                      submitting ||
+                      !myHand?.canRaise ||
+                      maxRaise <= hand!.currentBet ||
+                      raise < minRaise ||
+                      raise > maxRaise ||
+                      !Number.isInteger(raise)
+                    }
+                    onClick={() => action("raise", raise)}
+                  >
+                    加注至 {fmt(raise)}
+                  </Button>
+                  <Button
+                    className="allin-button"
+                    disabled={
+                      !connected ||
+                      submitting ||
+                      !me?.stack ||
+                      (maxRaise > hand!.currentBet && !myHand?.canRaise)
+                    }
+                    onClick={() => action("allin")}
+                  >
+                    <span>
+                      ALL IN<small>全下 {fmt(me?.stack || 0)}</small>
+                    </span>
+                  </Button>
+                </div>
+                {submitting && (
+                  <p className="action-feedback" role="status">
+                    <LoaderCircle size={16} /> 已发送，等待牌桌更新…
+                  </p>
                 )}
               </div>
             ) : (
@@ -1901,6 +2027,9 @@ function Room({
               {allowedChat && (
                 <button
                   className={"chat-toggle " + (chatOpen ? "active" : "")}
+                  aria-label="牌桌聊天"
+                  aria-expanded={chatOpen}
+                  aria-controls="table-chat"
                   onClick={() => setChatOpen(!chatOpen)}
                 >
                   <MessageCircle size={17} />
@@ -1922,7 +2051,7 @@ function Room({
           )}
         </section>
         {chatOpen && allowedChat && (
-          <aside className="chat-panel">
+          <aside className="chat-panel" id="table-chat" aria-label="牌桌聊天">
             <div className="chat-heading">
               <h3>
                 <MessageCircle size={17} />
