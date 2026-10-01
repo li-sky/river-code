@@ -57,3 +57,10 @@ python3 scripts/recovery_check.py verify /tmp/river-recovery.json
 GitHub OAuth 使用可控的模拟提供方验证了状态、令牌交换及用户创建；实际 GitHub 登录需要自己的 Client ID/Secret。真实域名证书、不同网络设备之间的 TURN/NAT 通话及人的主观听感需要在部署环境验证。本次没有将这些外部条件报告为已完成。
 
 当前持久化恢复的是最新房间快照，不包含每一手的完整可回放历史；服务采用单实例运行。
+# 当前可见牌型提示（2026-10-01）
+
+独立 `feat/current-hand-rank` worktree 增加服务端 `HandPlayer.currentHand`，从可见两张底牌与当前公共牌计算最佳五张类别。测试涵盖逐轮更新、私牌隔离、摊牌、弃牌、新手清除、公共牌最佳组合及 A2345；执行入口为 `backend/internal/poker/current_hand_test.go`。
+
+本次本地执行后端 `go test ./...`、`go vet ./...` 及前端 `npm run build`。实际浏览器使用独立内存服务 `127.0.0.1:8093` 与两名合成访客，通过真实 HTTP/WebSocket 验证翻牌前不显示、翻牌/转牌/河牌同步显示、摊牌公开对手、新手和弃牌后标签数量归零。桌面 1440×1000、手机 390×844 和 320×740 已检查；手机底牌区与座位一致，提示为 14px。320px 短屏仍使用原有 sticky 操作区和纵向滚动，滚动至牌桌下方后座位标签完整可见，底牌区同步提示始终随操作区显示。新增标签下方预留 28px 间距，无横向溢出；本次未改造原有 sticky 布局。
+
+代码和规格使用各自独立 worktree，未修改主工作区的并行 UI；未合并或部署，未验证生产数据库、OAuth 或 TURN。最终提交后的检查证据由 [当前牌型计划](https://github.com/li-sky/river-spec/blob/2c7a2ef02aefb0be7258624133b1a75c1245678a/plans/current-hand-rank.md) 后续完成记录保存。Windows 验证使用独立工具目录中的 Go 1.24.0 和调用现有 Node/npm 的本地 npm shim，以适配 SDD 的固定命令。

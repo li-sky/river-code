@@ -1490,6 +1490,15 @@ function Room({
                           {fmt(p.stack)}
                           {!p.connected && <WifiOff size={10} />}
                         </div>
+                        {hp?.currentHand && (
+                          <div
+                            className="seat-hand-rank"
+                            aria-label={`${p.name} 的当前牌型：${hp.currentHand}`}
+                            title="根据可见底牌和当前公共牌组成的最佳五张牌型"
+                          >
+                            当前：{hp.currentHand}
+                          </div>
+                        )}
                         {hand?.dealerSeat === i && (
                           <span className="dealer-button">D</span>
                         )}
@@ -1564,7 +1573,7 @@ function Room({
               })}
             </div>
           </div>
-          <div className="under-table">
+          <div className={"under-table " + (hand?.players.some(p => p.currentHand) ? "has-hand-rank" : "")}>
             <div className="under-table-left">
               <span>
                 <ShieldCheck size={14} /> 服务器公正发牌
@@ -1578,6 +1587,11 @@ function Room({
               {myHand?.cards.length === 2 && (
                 <div className="mobile-hole-cards">
                   <span>你的底牌</span>
+                  {myHand.currentHand && (
+                    <span className="mobile-hand-rank">
+                      当前：{myHand.currentHand}
+                    </span>
+                  )}
                   <div>
                     {myHand.cards.map((c, i) => (
                       <Card

@@ -52,15 +52,16 @@ type Hand struct {
 }
 
 type HandPlayer struct {
-	ID       string   `json:"id"`
-	Seat     int      `json:"seat"`
-	Bet      int64    `json:"bet"`
-	TotalBet int64    `json:"totalBet"`
-	Folded   bool     `json:"folded"`
-	AllIn    bool     `json:"allIn"`
-	Cards    []string `json:"cards"`
-	Acted    bool     `json:"acted"`
-	CanRaise bool     `json:"canRaise"`
+	ID          string   `json:"id"`
+	Seat        int      `json:"seat"`
+	Bet         int64    `json:"bet"`
+	TotalBet    int64    `json:"totalBet"`
+	Folded      bool     `json:"folded"`
+	AllIn       bool     `json:"allIn"`
+	Cards       []string `json:"cards"`
+	Acted       bool     `json:"acted"`
+	CanRaise    bool     `json:"canRaise"`
+	CurrentHand string   `json:"currentHand,omitempty"`
 }
 type HandView struct {
 	Number     int          `json:"number"`
@@ -436,7 +437,15 @@ func (h *Hand) View(viewerID string) HandView {
 			cards = append(cards, p.Cards...)
 		}
 		v.Pot += p.TotalBet
-		v.Players = append(v.Players, HandPlayer{ID: p.ID, Seat: p.Seat, Bet: p.Bet, TotalBet: p.TotalBet, Folded: p.Folded, AllIn: p.AllIn, Cards: cards, Acted: p.Acted, CanRaise: h.canRaise(p)})
+		player := HandPlayer{ID: p.ID, Seat: p.Seat, Bet: p.Bet, TotalBet: p.TotalBet, Folded: p.Folded, AllIn: p.AllIn, Cards: cards, Acted: p.Acted, CanRaise: h.canRaise(p)}
+		// Derive the hint only after filtering private cards for this viewer.
+		if !p.Folded && len(cards) == 2 && len(v.Board) >= 3 {
+			visible := append(append([]string{}, v.Board...), cards...)
+			if rank, err := Evaluate(visible); err == nil {
+				player.CurrentHand = rank.Description
+			}
+		}
+		v.Players = append(v.Players, player)
 	}
 	return v
 }
