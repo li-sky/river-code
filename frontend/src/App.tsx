@@ -256,7 +256,8 @@ function Card({
   small?: boolean;
   index?: number;
 }) {
-  const rank = code?.slice(0, -1) || "",
+  const rawRank = code?.slice(0, -1) || "",
+    rank = rawRank === "T" ? "10" : rawRank,
     suit = code?.slice(-1) || "",
     glyph = ({ s: "♠", h: "♥", d: "♦", c: "♣" } as Record<string, string>)[
       suit
