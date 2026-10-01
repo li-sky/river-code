@@ -57,3 +57,11 @@ python3 scripts/recovery_check.py verify /tmp/river-recovery.json
 GitHub OAuth 使用可控的模拟提供方验证了状态、令牌交换及用户创建；实际 GitHub 登录需要自己的 Client ID/Secret。真实域名证书、不同网络设备之间的 TURN/NAT 通话及人的主观听感需要在部署环境验证。本次没有将这些外部条件报告为已完成。
 
 当前持久化恢复的是最新房间快照，不包含每一手的完整可回放历史；服务采用单实例运行。
+
+## 房主置顶消息验证（2026-10-01）
+
+在独立 `feat/host-pin-message` worktree 实现，每桌一条房主置顶、替换和取消，规格计划为 [host-pin-message.md](https://github.com/li-sky/river-spec/blob/6e4eb3870a1e3a12ab76fc99b9adcbbc85fb5c01/plans/host-pin-message.md)。
+
+- Windows 原生 Go：`go test ./...` 与 `go vet ./...` 通过；五项 `TestPin*` 测试实际覆盖当前房主、旧连接、跨桌/无效 ID、过期取消、系统/房间开关、限流、牌局中操作、房主移交、聊天裁剪、作者离开、快照恢复、旧字段缺失和保存失败回滚/无广播。
+- `npm run build` 通过。`scripts/pin_check.cjs` 在隔离的 `http://localhost:8091` 服务、内存存储及两份 Chrome 会话通过：房主置顶/替换/两处取消、guest 只读、双端同步、刷新、文本转义、聊天滚动，1440×1000 桌面、390×844 手机及 390×667 手机房主布局无横向溢出且输入框可用。执行代理实际查看桌面与手机截图，确认置顶区域可读且有界滚动。
+- 本次恢复证据来自内存仓储重新构造服务；未验证真实 PostgreSQL 进程重启。可选 `go test -race ./internal/server` 在当前 Windows 环境因缺少 CGO 无法运行，不登记为通过。未发布或替换既有运行服务。

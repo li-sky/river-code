@@ -24,6 +24,8 @@ import {
   MessageCircle,
   Mic,
   MicOff,
+  Pin,
+  PinOff,
   Plus,
   Send,
   Settings,
@@ -1300,6 +1302,7 @@ function Room({
       ? state.players.find((p) => p.seat === hand?.turnSeat)
       : undefined,
     submitting = Boolean(hand?.turnToken && submittingToken === hand.turnToken),
+    pinnedMessage = state.pinnedMessage,
     allowedReactions =
       config.reactionsEnabled && state.settings.reactionsEnabled,
     allowedChat = config.chatEnabled && state.settings.chatEnabled;
@@ -2097,6 +2100,41 @@ function Room({
                 <X size={17} />
               </button>
             </div>
+            {pinnedMessage && (
+              <section className="pinned-message" aria-label="置顶消息">
+                <div className="pinned-message-heading">
+                  <span>
+                    <Pin size={14} /> 置顶消息
+                  </span>
+                  {isHost && (
+                    <button
+                      type="button"
+                      className="chat-pin-button"
+                      disabled={!connected}
+                      aria-label="取消置顶消息"
+                      onClick={() => send({
+                        type: "unpin_message",
+                        messageId: pinnedMessage.id,
+                      })}
+                    >
+                      <PinOff size={14} />取消置顶
+                    </button>
+                  )}
+                </div>
+                <div className="pinned-message-content">
+                  <div className="pinned-message-author">
+                    <span>{pinnedMessage.name}</span>
+                    <time dateTime={pinnedMessage.at}>
+                      {new Date(pinnedMessage.at).toLocaleTimeString("zh-CN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
+                  </div>
+                  <p>{pinnedMessage.text}</p>
+                </div>
+              </section>
+            )}
             <div className="chat-messages">
               {state.messages.length ? (
                 state.messages.map((m) => (
@@ -2117,6 +2155,21 @@ function Room({
                       </time>
                     </span>
                     <p>{m.text}</p>
+                    {isHost && (
+                      <button
+                        type="button"
+                        className="chat-pin-button"
+                        disabled={!connected}
+                        aria-label={pinnedMessage?.id === m.id ? "取消置顶此消息" : "置顶此消息"}
+                        onClick={() => send({
+                          type: pinnedMessage?.id === m.id ? "unpin_message" : "pin_message",
+                          messageId: m.id,
+                        })}
+                      >
+                        {pinnedMessage?.id === m.id ? <PinOff size={13} /> : <Pin size={13} />}
+                        {pinnedMessage?.id === m.id ? "取消置顶" : "置顶"}
+                      </button>
+                    )}
                   </div>
                 ))
               ) : (

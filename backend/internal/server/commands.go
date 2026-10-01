@@ -24,6 +24,7 @@ type command struct {
 	Settings  RoomSettings    `json:"settings"`
 	PlayerID  string          `json:"playerId"`
 	Text      string          `json:"text"`
+	MessageID string          `json:"messageId"`
 	To        string          `json:"to"`
 	Emoji     string          `json:"emoji"`
 	Data      json.RawMessage `json:"data"`
@@ -300,6 +301,35 @@ func (s *Server) mutate(r *room, p *Player, c *client, m command, sound *string)
 		r.Messages = append(r.Messages, Message{ID: newID(), UserID: p.ID, Name: p.Name, Text: text, At: time.Now().UTC()})
 		if len(r.Messages) > 100 {
 			r.Messages = r.Messages[len(r.Messages)-100:]
+		}
+	case "pin_message", "unpin_message":
+		if !host {
+			return errors.New("只有房主可以管理置顶消息")
+		}
+		if !s.cfg.ChatEnabled || !r.Settings.ChatEnabled {
+			return errors.New("本桌未开启文字聊天")
+		}
+		if !c.allow("pin", 12) {
+			return errors.New("置顶操作过于频繁")
+		}
+		if m.Type == "unpin_message" {
+			if r.PinnedMessage == nil || m.MessageID != r.PinnedMessage.ID {
+				return errors.New("置顶消息已更新，请根据最新消息操作")
+			}
+			r.PinnedMessage = nil
+		} else {
+			var selected *Message
+			for _, message := range r.Messages {
+				if message.ID == m.MessageID {
+					// Keep a copy independently of the rolling chat history.
+					selected = &message
+					break
+				}
+			}
+			if selected == nil {
+				return errors.New("消息不存在或已不在最近聊天记录中")
+			}
+			r.PinnedMessage = selected
 		}
 	case "emoji":
 		if !s.cfg.ReactionsEnabled || !r.Settings.ReactionsEnabled {
